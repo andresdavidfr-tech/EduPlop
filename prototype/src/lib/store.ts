@@ -6,6 +6,7 @@ import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
   Settings, AuditEventType, TokenStatus, Notification, User,
   Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
+  Guardian, Guardianship,
 } from "./types";
 import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS } from "./seed";
 
@@ -25,6 +26,8 @@ interface State {
   agenda: AgendaEvent[];
   pushEnabled: boolean;
   notifPrefs: NotifPrefs;
+  customGuardians: Guardian[]; // autorizados dados de alta por las familias
+  customGuardianships: Guardianship[];
 }
 
 const LS_KEY = "eduplop-state-v3";
@@ -92,6 +95,8 @@ function freshState(): State {
     ],
     pushEnabled: false,
     notifPrefs: { pickup: true, message: true, agenda: true, announcement: true },
+    customGuardians: [],
+    customGuardianships: [],
   };
 }
 
@@ -188,12 +193,33 @@ class Store {
     });
   }
 
+  // --- AUTORIZADOS (seed + altas de familias) ---
+  guardians(): Guardian[] { return [...GUARDIANS, ...this.state.customGuardians]; }
+  guardianships(): Guardianship[] { return [...GUARDIANSHIPS, ...this.state.customGuardianships]; }
+  guardianById(id: string): Guardian | undefined { return this.guardians().find((g) => g.id === id); }
+  authorizedFor(studentId: string): Guardian[] {
+    const ids = this.guardianships().filter((g) => g.studentId === studentId).map((g) => g.guardianId);
+    return this.guardians().filter((g) => ids.includes(g.id));
+  }
+  /** Alta de un autorizado por parte de la familia (nombre, DNI, foto opcional). */
+  addAuthorized(input: { name: string; document: string; relation: string; photo?: string; studentId: string }): Guardian {
+    const g: Guardian = {
+      id: ulid("guar_"), name: input.name.trim(), document: input.document.trim(),
+      relation: input.relation.trim() || "Autorizado", emoji: "🧑", photo: input.photo, status: "active",
+    };
+    this.commit({
+      customGuardians: [...this.state.customGuardians, g],
+      customGuardianships: [...this.state.customGuardianships, { guardianId: g.id, studentId: input.studentId, role: "authorized" }],
+    });
+    return g;
+  }
+
   /** Avisa a la familia (tutor principal) que su hijo/a fue retirado. */
   private notifyFamilyOfPickup(studentId: string, authorizedId: string, mode: string) {
-    const link = GUARDIANSHIPS.find((g) => g.studentId === studentId && g.role === "primary_guardian");
+    const link = this.guardianships().find((g) => g.studentId === studentId && g.role === "primary_guardian");
     const famUser = USERS.find((u) => u.role === "family" && u.guardianId === link?.guardianId);
     const student = STUDENTS.find((s) => s.id === studentId);
-    const who = GUARDIANS.find((g) => g.id === authorizedId);
+    const who = this.guardianById(authorizedId);
     const target = famUser ? { audienceUser: famUser.username } : { audienceRole: "family" as const };
     this.pushNotification({
       ...target, kind: "pickup",
@@ -301,15 +327,23 @@ class Store {
   }
 
   // --- FAMILIAS: emisión del QR firmado ---
-  issueToken(studentId: string, authorizedId: string, issuedBy: string, reason: string) {
+  // scheduleAt: epoch ms del retiro programado. Si se omite, es "express" (válido desde ya).
+  issueToken(studentId: string, authorizedId: string, issuedBy: string, reason: string, scheduleAt?: number) {
     const now = Date.now();
+    const scheduled = typeof scheduleAt === "number" && scheduleAt > now + 60000;
+    // ventana de validez alrededor de la hora programada (±)
+    const windowMs = 30 * 60 * 1000; // 30 min después de la hora indicada
+    const preMs = 15 * 60 * 1000; // se habilita 15 min antes
+    const nbf = scheduled ? scheduleAt - preMs : now;
+    const exp = scheduled ? scheduleAt + windowMs : now + this.state.settings.ttlSeconds * 1000;
     const claims: TokenClaims = {
       iss: INSTITUTION.id,
       sub: studentId,
       act: authorizedId,
       jti: ulid("JTI_"),
       iat: now,
-      exp: now + this.state.settings.ttlSeconds * 1000,
+      nbf,
+      exp,
       nonce: ulid(),
     };
     const encoded = encodeJson(claims);
@@ -319,7 +353,8 @@ class Store {
       jti: claims.jti, claims, qrPayload, issuedBy, reason, status: "active",
     };
     this.commit({ tokens: [token, ...this.state.tokens] });
-    this.appendAudit("token_issued", claims.jti, issuedBy, `QR emitido para ${studentId} → retira ${authorizedId}`);
+    this.appendAudit("token_issued", claims.jti, issuedBy,
+      `QR ${scheduled ? "programado" : "express"} para ${studentId} → retira ${authorizedId}`);
     return token;
   }
 
@@ -332,10 +367,12 @@ class Store {
     });
   }
 
-  /** Estado efectivo de un token, considerando TTL. */
+  /** Estado efectivo de un token, considerando TTL y programación. */
   effectiveStatus(t: AuthorizationToken): TokenStatus {
     if (t.status !== "active") return t.status;
-    if (Date.now() > t.claims.exp) return "expired";
+    const now = Date.now();
+    if (now > t.claims.exp) return "expired";
+    if (t.claims.nbf && now < t.claims.nbf) return "scheduled";
     return "active";
   }
 
@@ -350,7 +387,12 @@ class Store {
     }
     const claims = JSON.parse(new TextDecoder().decode(b64(encoded))) as TokenClaims;
     const skew = this.state.settings.clockSkewSeconds * 1000;
-    if (Date.now() > claims.exp + skew) return { ok: false, reason: "QR vencido (TTL superado)", claims };
+    const now = Date.now();
+    if (now > claims.exp + skew) return { ok: false, reason: "QR vencido (TTL superado)", claims };
+    if (claims.nbf && now < claims.nbf - skew) {
+      const when = new Date(claims.nbf).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      return { ok: false, reason: `Pase programado: aún no está activo (se habilita ${when})`, claims };
+    }
     return { ok: true, claims };
   }
 

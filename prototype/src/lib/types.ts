@@ -1,4 +1,4 @@
-export type TokenStatus = "active" | "consumed" | "expired" | "revoked";
+export type TokenStatus = "active" | "consumed" | "expired" | "revoked" | "scheduled";
 export type PickupMode = "online" | "offline" | "manual";
 
 export interface Student {
@@ -15,6 +15,7 @@ export interface Guardian {
   document: string;
   relation: string;
   emoji: string;
+  photo?: string; // data URL opcional (foto del autorizado)
   status: "active" | "revoked";
 }
 
@@ -31,6 +32,7 @@ export interface TokenClaims {
   act: string; // authorized_id (quién retira)
   jti: string; // id único (anti-reuso)
   iat: number; // emisión (epoch ms)
+  nbf: number; // no válido antes de (epoch ms) — retiro programado
   exp: number; // vencimiento (epoch ms)
   nonce: string;
 }

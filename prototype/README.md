@@ -3,6 +3,8 @@
 Demo navegable de los tres módulos y del flujo de **retiro seguro con QR**, con
 **criptografía real** ejecutándose en el navegador:
 
+- **Alta de autorizados** por la familia (nombre, DNI, foto opcional) y **retiro programado** (día y hora), además del express.
+- **Compartir el pase por WhatsApp** (Web Share API con la imagen del QR; fallback a `wa.me`).
 - **Mensajería bidireccional** familia ↔ colegio (justificar faltas, permisos, consultas + respuestas en hilo).
 - **Agenda interactiva vinculada**: el colegio publica eventos segmentados y las familias confirman asistencia (RSVP).
 - **Notificaciones push** del navegador (permiso + preferencias por tipo) y centro de notificaciones in-app.

@@ -208,6 +208,16 @@ button { font-size: 14px; }
 .tech { margin-top: 12px; }
 .tech summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 
+/* alta de autorizados / programación / whatsapp */
+.addlink { display: inline-block; margin: 8px 0 4px; padding: 0; }
+.avatar-img { border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+.seg { display: flex; gap: 8px; }
+.seg-btn { flex: 1; border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 9px; cursor: pointer; font-weight: 600; color: var(--muted); }
+.seg-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.pill.scheduled { background: #e0e7ff; color: var(--brand-d); }
+.wa-btn { display: inline-flex; align-items: center; gap: 8px; background: #25D366; color: #fff; border: none; border-radius: 12px; padding: 12px 18px; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 14px; box-shadow: 0 4px 14px rgba(37,211,102,.35); }
+.wa-btn:hover { background: #1ebe5b; }
+
 /* AI assistant */
 .ai-fab { position: fixed; right: 22px; bottom: 22px; z-index: 80; background: linear-gradient(135deg, #6366f1, #4338ca); color: #fff; border: none; border-radius: 999px; padding: 14px 20px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: 0 8px 24px rgba(79,70,229,.4); }
 .ai-panel { position: fixed; right: 22px; bottom: 22px; z-index: 90; width: 360px; max-width: calc(100vw - 32px); height: 520px; max-height: calc(100vh - 40px); background: #fff; border-radius: 18px; box-shadow: 0 20px 60px rgba(15,23,42,.3); display: flex; flex-direction: column; overflow: hidden; }

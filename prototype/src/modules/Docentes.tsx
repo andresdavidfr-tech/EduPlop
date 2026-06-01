@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { store, useStore } from "../lib/store";
-import { STUDENTS, GUARDIANS, GUARDIANSHIPS, TEACHERS } from "../lib/seed";
+import { STUDENTS, TEACHERS } from "../lib/seed";
 import { QrScanner } from "../components/QrScanner";
+import { Avatar } from "../components/Avatar";
 import { playSuccess, playError } from "../lib/sound";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
@@ -22,7 +23,7 @@ export function Docentes() {
   const verification = useMemo(() => (scanned ? store.verifyLocally(scanned) : null), [scanned]);
   const claims = verification?.claims;
   const student = claims && STUDENTS.find((s) => s.id === claims.sub);
-  const authorized = claims && GUARDIANS.find((g) => g.id === claims.act);
+  const authorized = claims ? store.guardianById(claims.act) : undefined;
 
   function handleScan(payload: string) {
     setScannerOpen(false);
@@ -54,10 +55,7 @@ export function Docentes() {
 
   // retiro manual (contingencia)
   const [mStudent, setMStudent] = useState(STUDENTS[0].id);
-  const mAuthorizeds = useMemo(() => {
-    const ids = GUARDIANSHIPS.filter((g) => g.studentId === mStudent).map((g) => g.guardianId);
-    return GUARDIANS.filter((g) => ids.includes(g.id));
-  }, [mStudent]);
+  const mAuthorizeds = useMemo(() => store.authorizedFor(mStudent), [mStudent, state.customGuardians]);
   const [mAuth, setMAuth] = useState(mAuthorizeds[0]?.id);
   function manual() {
     const auth = mAuth ?? mAuthorizeds[0]?.id;
@@ -143,11 +141,11 @@ export function Docentes() {
             {state.receipts.length === 0 && <tr><td colSpan={4} className="muted">Sin salidas registradas.</td></tr>}
             {state.receipts.map((r) => {
               const stu = STUDENTS.find((s) => s.id === r.studentId);
-              const g = GUARDIANS.find((x) => x.id === r.authorizedId);
+              const g = store.guardianById(r.authorizedId);
               return (
                 <tr key={r.receiptId}>
                   <td>{stu?.emoji} {stu?.name}</td>
-                  <td>{g?.emoji} {g?.name}</td>
+                  <td>{g?.name}</td>
                   <td><span className={`pill ${r.mode}`}>{r.mode}</span>{r.pendingSync && <span className="pill warn">pendiente</span>}</td>
                   <td>{new Date(r.timestamp).toLocaleTimeString()}</td>
                 </tr>
@@ -177,7 +175,7 @@ export function Docentes() {
                     <div><small>Alumno/a</small><b>{student?.name}</b><span className="mono">Doc. {student?.document}</span><span className="muted small">{student?.classroom}</span></div>
                   </div>
                   <div className="idcard big highlight">
-                    <div className="avatar">{authorized?.emoji ?? "❓"}</div>
+                    <Avatar g={authorized} size={48} />
                     <div><small>Persona autorizada a retirar</small><b>{authorized?.name}</b><span className="mono">Doc. {authorized?.document}</span><span className="muted small">{authorized?.relation}</span></div>
                   </div>
                 </div>

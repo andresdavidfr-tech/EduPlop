@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { store, useStore } from "../lib/store";
-import { STUDENTS, GUARDIANS } from "../lib/seed";
+import { STUDENTS } from "../lib/seed";
 import { shortHash } from "../lib/crypto";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
@@ -111,7 +111,7 @@ export function Directivo() {
         <p className="muted small">Revocar suspende a la persona en todos los retiros (incluso offline, vía caché).</p>
         <table className="tbl">
           <tbody>
-            {GUARDIANS.map((g) => {
+            {store.guardians().map((g) => {
               const revoked = state.revokedGuardians.includes(g.id);
               return (
                 <tr key={g.id}>
@@ -176,7 +176,7 @@ export function Directivo() {
             {state.receipts.length === 0 && <tr><td colSpan={6} className="muted">Sin comprobantes.</td></tr>}
             {state.receipts.map((r) => {
               const stu = STUDENTS.find((s) => s.id === r.studentId);
-              const g = GUARDIANS.find((x) => x.id === r.authorizedId);
+              const g = store.guardianById(r.authorizedId);
               return (
                 <tr key={r.receiptId}>
                   <td className="mono">{r.receiptId}</td>

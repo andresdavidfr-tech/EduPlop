@@ -1,5 +1,5 @@
 import { store } from "./store";
-import { STUDENTS, GUARDIANS, GUARDIANSHIPS } from "./seed";
+import { STUDENTS, GUARDIANSHIPS } from "./seed";
 import type { User } from "./types";
 
 export interface AssistantReply {
@@ -52,8 +52,7 @@ export function askAssistant(question: string, user: User): AssistantReply {
     if (user.role === "family") {
       const studs = familyStudents(user);
       const lines = studs.map((s) => {
-        const ids = GUARDIANSHIPS.filter((g) => g.studentId === s.id).map((g) => g.guardianId);
-        const people = GUARDIANS.filter((g) => ids.includes(g.id) && g.status === "active");
+        const people = store.authorizedFor(s.id).filter((g) => g.status === "active");
         return `• ${s.emoji} ${s.name}: ${people.map((p) => `${p.name} (${p.relation})`).join(", ")}`;
       });
       return { text: `Personas autorizadas a retirar:\n${lines.join("\n")}\n\nPodés agregar o quitar autorizados desde el módulo Familias.` };
@@ -78,7 +77,7 @@ export function askAssistant(question: string, user: User): AssistantReply {
     if (today.length === 0) return { text: "Todavía no se registró ningún retiro hoy. Te avisaré apenas suceda. 🔔" };
     const lines = today.map((r) => {
       const s = STUDENTS.find((x) => x.id === r.studentId);
-      const g = GUARDIANS.find((x) => x.id === r.authorizedId);
+      const g = store.guardianById(r.authorizedId);
       return `• ${s?.name} fue retirado por ${g?.name} a las ${new Date(r.timestamp).toLocaleTimeString()}`;
     });
     return { text: `Retiros de hoy:\n${lines.join("\n")}` };
