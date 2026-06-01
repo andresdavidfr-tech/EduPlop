@@ -17,6 +17,7 @@ interface State {
   incidents: Incident[];
   settings: Settings;
   consumedLocally: string[]; // jti consumidos en el dispositivo (anti-reuso offline)
+  revokedGuardians: string[]; // lista de revocación (cacheable offline)
 }
 
 const LS_KEY = "eduplop-state-v1";
@@ -31,6 +32,7 @@ function freshState(): State {
     incidents: [],
     settings: { ttlSeconds: 60, clockSkewSeconds: 5, deviceOnline: true },
     consumedLocally: [],
+    revokedGuardians: [],
   };
 }
 
@@ -141,6 +143,12 @@ class Store {
     const claims = local.claims;
     const online = this.state.settings.deviceOnline;
 
+    // revocación del autorizado (lista cacheable → también funciona offline)
+    if (this.state.revokedGuardians.includes(claims.act)) {
+      this.appendAudit("pickup_failed", claims.jti, teacherId, "Autorizado revocado / suspendido");
+      return { ok: false, reason: "Autorizado revocado o suspendido (no habilitado para retirar)" };
+    }
+
     // anti-reuso local (siempre)
     if (this.state.consumedLocally.includes(claims.jti)) {
       this.appendAudit("pickup_failed", claims.jti, teacherId, "QR ya utilizado en este dispositivo");
@@ -242,6 +250,55 @@ class Store {
     };
     this.commit({ incidents: [inc, ...this.state.incidents] });
     this.appendAudit("dispute_opened", receiptId, "admin", "Disputa registrada (evento compensatorio)");
+  }
+
+  resolveIncident(id: string, resolution: string) {
+    this.commit({
+      incidents: this.state.incidents.map((i) =>
+        i.id === id ? { ...i, status: "resolved", resolution } : i),
+    });
+    this.appendAudit("dispute_resolved", id, "admin", `Incidente resuelto: ${resolution}`);
+  }
+
+  revokeGuardian(id: string) {
+    if (this.state.revokedGuardians.includes(id)) return;
+    this.commit({ revokedGuardians: [...this.state.revokedGuardians, id] });
+    this.appendAudit("guardian_revoked", id, "admin", `Autorizado ${id} revocado (lista de revocación)`);
+  }
+  restoreGuardian(id: string) {
+    this.commit({ revokedGuardians: this.state.revokedGuardians.filter((g) => g !== id) });
+    this.appendAudit("guardian_restored", id, "admin", `Autorizado ${id} rehabilitado`);
+  }
+  isRevoked(id: string) { return this.state.revokedGuardians.includes(id); }
+
+  /** Retiro de contingencia (sin QR): el docente registra una salida verificada manualmente. */
+  manualPickup(studentId: string, authorizedId: string, teacherId: string):
+    { ok: boolean; reason?: string; receipt?: PickupReceipt } {
+    if (this.state.revokedGuardians.includes(authorizedId)) {
+      this.appendAudit("pickup_failed", "MANUAL", teacherId, "Autorizado revocado (intento de retiro manual)");
+      return { ok: false, reason: "Autorizado revocado o suspendido" };
+    }
+    const online = this.state.settings.deviceOnline;
+    const prevHash = this.state.ledger.length ? this.state.ledger[this.state.ledger.length - 1].hash : "GENESIS";
+    const receiptCore = {
+      receiptId: ulid("RCPT_"),
+      tokenJti: "MANUAL",
+      studentId, authorizedId,
+      validatedBy: teacherId,
+      deviceId: DEVICE_ID,
+      mode: "manual" as PickupReceipt["mode"],
+      visualConfirmed: true,
+      timestamp: Date.now(),
+      prevHash,
+    };
+    const payloadHash = sha256hex(JSON.stringify(receiptCore));
+    const deviceSignature = sign(payloadHash, this.state.deviceKey.priv);
+    const serverSignature = online ? sign(payloadHash, this.state.institutionKey.priv) : undefined;
+    const receipt: PickupReceipt = { ...receiptCore, payloadHash, deviceSignature, serverSignature, pendingSync: !online };
+    this.commit({ receipts: [receipt, ...this.state.receipts] });
+    this.appendAudit("pickup_manual", receipt.receiptId, teacherId,
+      `Retiro MANUAL (contingencia): ${studentId} retirado por ${authorizedId}`);
+    return { ok: true, receipt };
   }
 
   // --- DIRECTIVO: verificación e integridad ---

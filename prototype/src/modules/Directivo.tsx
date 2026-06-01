@@ -6,10 +6,14 @@ import { shortHash } from "../lib/crypto";
 const TYPE_LABEL: Record<string, string> = {
   token_issued: "QR emitido",
   pickup_validated: "Salida validada",
+  pickup_manual: "Salida manual",
   pickup_synced: "Salida reconciliada",
   pickup_failed: "Intento fallido",
   double_use_detected: "Doble uso",
-  dispute_opened: "Disputa",
+  dispute_opened: "Disputa abierta",
+  dispute_resolved: "Disputa resuelta",
+  guardian_revoked: "Autorizado revocado",
+  guardian_restored: "Autorizado rehabilitado",
   device_revoked: "Dispositivo revocado",
 };
 
@@ -58,12 +62,43 @@ export function Directivo() {
         )}
       </section>
 
+      <section className="card">
+        <h2>Autorizados (lista de revocación)</h2>
+        <p className="muted small">Revocar suspende a la persona en todos los retiros (incluso offline, vía caché).</p>
+        <table className="tbl">
+          <tbody>
+            {GUARDIANS.map((g) => {
+              const revoked = state.revokedGuardians.includes(g.id);
+              return (
+                <tr key={g.id}>
+                  <td>{g.emoji} {g.name} <span className="mono">· {g.relation}</span></td>
+                  <td>{revoked ? <span className="pill revoked">revocado</span> : <span className="pill active">activo</span>}</td>
+                  <td style={{ textAlign: "right" }}>
+                    {revoked
+                      ? <button className="link" onClick={() => store.restoreGuardian(g.id)}>Rehabilitar</button>
+                      : <button className="link" onClick={() => store.revokeGuardian(g.id)}>Revocar</button>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
+
       <section className="card span2">
         <h2>Incidentes</h2>
         {state.incidents.length === 0 && <p className="muted">Sin incidentes.</p>}
         {state.incidents.map((i) => (
           <div key={i.id} className="incident">
-            <span className={`pill ${i.type}`}>{i.type}</span> {i.detail}
+            <span className={`pill ${i.type}`}>{i.type}</span>
+            <span className={`pill ${i.status === "resolved" ? "active" : "warn"}`}>{i.status}</span>
+            {" "}{i.detail}
+            {i.resolution && <div className="muted small">↳ Resolución: {i.resolution}</div>}
+            {i.status === "open" && (
+              <button className="link" onClick={() => store.resolveIncident(i.id, "Verificado con evidencia; salida legítima")}>
+                Resolver
+              </button>
+            )}
             <span className="mono"> · {i.id}</span>
           </div>
         ))}

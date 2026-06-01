@@ -102,8 +102,12 @@ button { font-size: 14px; }
 .pill.warn { background: #fde68a; color: #92400e; }
 .pill.token_issued { background: #e0e7ff; color: var(--brand-d); }
 .pill.pickup_validated, .pill.pickup_synced { background: #dcfce7; color: var(--ok); }
-.pill.pickup_failed, .pill.double_use, .pill.double_use_detected { background: #fee2e2; color: var(--bad); }
+.pill.pickup_failed, .pill.double_use, .pill.double_use_detected, .pill.guardian_revoked { background: #fee2e2; color: var(--bad); }
 .pill.dispute, .pill.dispute_opened { background: #fef3c7; color: var(--warn); }
+.pill.manual, .pill.pickup_manual { background: #fef3c7; color: #92400e; }
+.pill.dispute_resolved, .pill.guardian_restored { background: #dcfce7; color: var(--ok); }
+.row.wrap { flex-wrap: wrap; }
+.grow { flex: 1 1 220px; }
 
 /* tables */
 .tbl { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }

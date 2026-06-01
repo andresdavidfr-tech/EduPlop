@@ -22,8 +22,11 @@ npm run dev      # http://localhost:5173
 | Docentes → escaneo, verificación local de **firma + TTL**, cotejo visual (foto+doc) y "Confirmo entrega" | `docs/02`, `docs/03` |
 | Toggle **Online/Offline** del dispositivo: offline encola el comprobante firmado y luego **sincroniza** | `docs/02`, `docs/04` |
 | Comprobante con `payload_hash` + `prev_hash` (encadenado) y doble firma (dispositivo + servidor) | `docs/03` |
+| **Retiro manual / contingencia** (`mode=manual`) cuando el QR no puede usarse | `docs/04` (Caso 3) |
+| **Revocación de autorizados** (lista de revocación) aplicada en validación, también offline | `docs/01`, `docs/06` |
+| **Resolución de disputas** con evento compensatorio (el comprobante original no se altera) | `docs/04` (Caso 2) |
 | Directivo → KPIs, libro de auditoría encadenado, **verificación de integridad** y **simulación de alteración** | `docs/03` |
-| Detección de **doble uso** en la reconciliación → incidente | `docs/04` |
+| Detección de **doble uso** en la reconciliación → incidente | `docs/04` (Caso 1) |
 
 ## Capturas
 

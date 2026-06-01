@@ -64,10 +64,14 @@ export interface PickupReceipt {
 export type AuditEventType =
   | "token_issued"
   | "pickup_validated"
+  | "pickup_manual"
   | "pickup_failed"
   | "pickup_synced"
   | "double_use_detected"
   | "dispute_opened"
+  | "dispute_resolved"
+  | "guardian_revoked"
+  | "guardian_restored"
   | "device_revoked";
 
 export interface AuditEvent {
@@ -87,6 +91,7 @@ export interface Incident {
   refReceiptId: string;
   status: "open" | "resolved";
   detail: string;
+  resolution?: string;
   timestamp: number;
 }
 
