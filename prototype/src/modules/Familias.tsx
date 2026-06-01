@@ -206,6 +206,7 @@ export function Familias() {
       {view === "historial" && <>
       <section className="card span2">
         <h2>Mis retiros recientes</h2>
+        <p className="note demo-note">🔎 <b>Demo de un dispositivo:</b> el estado se actualiza cuando el retiro se valida en <b>este mismo navegador</b>. Si el docente escanea desde otro teléfono, acá no se reflejará (haría falta un backend compartido).</p>
         <table className="tbl">
           <thead><tr><th>Alumno</th><th>Retira</th><th>Motivo</th><th>Estado</th></tr></thead>
           <tbody>

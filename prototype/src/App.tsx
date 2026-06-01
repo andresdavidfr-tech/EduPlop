@@ -72,7 +72,8 @@ function Shell({ allowed, userName, userRole, pendingSync }:
       </main>
 
       <footer className="foot">
-        Prototipo · firmas <b>Ed25519</b> reales + cadena de auditoría <b>SHA-256</b> · backend simulado en el navegador
+        Prototipo (demo de un dispositivo) · firmas <b>Ed25519</b> reales + cadena de auditoría <b>SHA-256</b> · backend simulado en el navegador.
+        <br />La validación de un pase se refleja dentro de <b>este mismo navegador</b>; sincronizar el estado entre distintos teléfonos requeriría un backend compartido.
       </footer>
 
       <Assistant />

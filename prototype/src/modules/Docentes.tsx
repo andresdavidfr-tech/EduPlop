@@ -98,6 +98,10 @@ export function Docentes() {
           📷 Escanear pase de retiro
         </button>
 
+        <div className="note demo-note">
+          🔎 <b>Demo de un dispositivo:</b> la validación se registra en este mismo navegador. Para ver el flujo completo, generá el pase y validálo en la misma sesión (o usá “Simular” en el escáner). Sincronizar el estado entre teléfonos distintos requeriría un backend compartido.
+        </div>
+
         {!state.settings.deviceOnline && (
           <div className="note offline-note">
             Sin conexión: igual podés validar. Verificamos el pase en el dispositivo y registramos la salida; se sincroniza al volver la señal.

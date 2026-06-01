@@ -132,6 +132,7 @@ button { font-size: 14px; }
 .note { margin-top: 14px; padding: 11px 13px; border-radius: 10px; font-size: 13px; }
 .offline-note { background: #fff7ed; color: #9a3412; }
 .sync-note { background: #eff6ff; color: #1e40af; }
+.demo-note { background: #f5f3ff; color: #5b21b6; border: 1px dashed #c4b5fd; line-height: 1.5; }
 .toast { padding: 13px 16px; border-radius: 12px; font-weight: 700; }
 .toast.ok { background: #dcfce7; color: var(--ok); }
 .toast.bad { background: #fee2e2; color: var(--bad); }
