@@ -277,3 +277,60 @@ button { font-size: 14px; }
   .msg-layout { grid-template-columns: 1fr; }
   .ai-panel { width: calc(100vw - 24px); right: 12px; bottom: 12px; }
 }
+
+/* ===================== ANIMACIONES ===================== */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes logoFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(-3deg); } }
+@keyframes logoPop { 0% { transform: scale(.4) rotate(-18deg); opacity: 0; } 70% { transform: scale(1.12) rotate(4deg); } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+@keyframes fabPulse { 0%, 100% { box-shadow: 0 8px 24px rgba(79,70,229,.4); } 50% { box-shadow: 0 8px 30px rgba(79,70,229,.75); } }
+@keyframes bellSwing { 0%, 70%, 100% { transform: rotate(0); } 80% { transform: rotate(14deg); } 90% { transform: rotate(-10deg); } }
+
+/* Logo animado */
+.brand-logo { transition: transform .3s cubic-bezier(.2,.8,.3,1.4), filter .3s; will-change: transform; }
+.brand-logo:hover { transform: scale(1.12) rotate(6deg); filter: drop-shadow(0 4px 10px rgba(79,70,229,.35)); cursor: pointer; }
+.login-brand .brand-logo { animation: logoPop .7s cubic-bezier(.2,.8,.3,1.4) both, logoFloat 4.5s ease-in-out 1s infinite; }
+.brand .brand-logo { animation: logoPop .6s cubic-bezier(.2,.8,.3,1.4) both; }
+
+/* Entrada de tarjetas y vistas */
+.card { animation: fadeInUp .45s ease both; }
+.login-card { animation: fadeInUp .5s ease both; }
+.modal-overlay { animation: fadeIn .2s ease both; }
+
+/* Botones con micro-interacción global */
+button { transition: transform .12s ease, background .2s ease, box-shadow .2s ease, color .2s ease, border-color .2s ease; }
+button:not(:disabled):hover { transform: translateY(-1px); }
+button:not(:disabled):active { transform: translateY(0) scale(.96); }
+.primary:not(:disabled):hover { box-shadow: 0 6px 18px rgba(79,70,229,.4); }
+.ghost:hover { background: #e7ebf3; border-color: #cbd5e1; }
+.tab { transition: transform .12s ease, background .2s, color .2s, border-color .2s; }
+.tab:hover { transform: translateY(-1px); }
+.rsvp-btn:hover { border-color: var(--brand); color: var(--brand-d); }
+.rsvp-btn.active { animation: pop .25s ease-out; }
+
+/* FAB del asistente y campana */
+.ai-fab { animation: fabPulse 2.6s ease-in-out infinite; }
+.ai-fab:hover { transform: translateY(-2px) scale(1.04); }
+.bell:hover { animation: bellSwing .6s ease; }
+
+/* ===================== AGENDA: enlaces / admin ===================== */
+.agenda-item { animation: fadeInUp .4s ease both; }
+.agenda-loc { display: inline-block; margin-top: 4px; font-size: 12.5px; color: var(--brand-d); text-decoration: none; }
+.agenda-loc:hover { text-decoration: underline; }
+.agenda-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.cal-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #eef2ff; color: var(--brand-d); border: 1px solid #c7d2fe;
+  border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 600;
+  cursor: pointer; text-decoration: none; transition: transform .12s ease, background .2s, box-shadow .2s;
+}
+.cal-link:hover { background: #e0e7ff; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(79,70,229,.18); }
+.agenda-admin { display: flex; gap: 6px; margin-top: 10px; }
+.small-btn { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+.ghost.danger { color: var(--bad); }
+.ghost.danger:hover { background: #fef2f2; border-color: #fecaca; }
+
+/* Respeta la preferencia de menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}

@@ -319,6 +319,33 @@ class Store {
       body: `${e.date}${e.time ? " " + e.time : ""} — ${e.description}`,
     });
   }
+  /** Edita un evento existente (docentes y dirección). Conserva id, autor y RSVPs. */
+  updateAgendaEvent(id: string, patch: Partial<Omit<AgendaEvent, "id" | "rsvps" | "createdBy">>) {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return; // solo colegio
+    let updated: AgendaEvent | undefined;
+    this.commit({
+      agenda: this.state.agenda.map((e) => {
+        if (e.id !== id) return e;
+        updated = { ...e, ...patch };
+        return updated;
+      }),
+    });
+    if (updated) {
+      const audience = updated.audienceRole === "teacher" ? "teacher" : "family";
+      this.pushNotification({
+        audienceRole: audience, kind: "agenda",
+        title: `✏️ Evento actualizado: ${updated.title}`,
+        body: `${updated.date}${updated.time ? " " + updated.time : ""} — ${updated.description}`,
+      });
+    }
+  }
+  /** Elimina un evento (docentes y dirección). */
+  deleteAgendaEvent(id: string) {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return; // solo colegio
+    this.commit({ agenda: this.state.agenda.filter((e) => e.id !== id) });
+  }
   agendaFor(user: User | null): AgendaEvent[] {
     if (!user) return [];
     const list = user.role === "family"

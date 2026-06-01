@@ -160,6 +160,7 @@ export interface AgendaEvent {
   type: AgendaType;
   audienceRole: "family" | "teacher" | "all";
   createdBy: string;
+  location?: string; // lugar (se puede abrir en Google Maps)
   rsvps: Record<string, RsvpValue>;
 }
 

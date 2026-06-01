@@ -16,6 +16,10 @@ export function Logo({ size = 44 }: { size?: number }) {
     >
       <defs>
         <linearGradient id="eduplop-grad" x1="0" y1="0" x2="1" y2="1">
+          {/* shimmer: el degradado azul→rojo gira suavemente */}
+          <animate attributeName="x1" values="0;0.35;0" dur="6s" repeatCount="indefinite" />
+          <animate attributeName="y1" values="0;0.2;0" dur="6s" repeatCount="indefinite" />
+          <animate attributeName="x2" values="1;0.75;1" dur="6s" repeatCount="indefinite" />
           <stop offset="0" stopColor="#1f74ff" />
           <stop offset="0.55" stopColor="#8b35a6" />
           <stop offset="1" stopColor="#ee2630" />
