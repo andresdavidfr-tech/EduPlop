@@ -35,6 +35,13 @@ export interface TokenClaims {
   nbf: number; // no válido antes de (epoch ms) — retiro programado
   exp: number; // vencimiento (epoch ms)
   nonce: string;
+  // Datos de la persona autorizada embebidos en el pase (para que el docente
+  // los vea sin backend, incluso en otro dispositivo). Van dentro de la firma.
+  act_name?: string;
+  act_doc?: string;
+  act_rel?: string;
+  act_emoji?: string;
+  act_photo?: string; // miniatura comprimida (data URL)
 }
 
 export interface AuthorizationToken {

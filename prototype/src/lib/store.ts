@@ -229,6 +229,27 @@ class Store {
   guardians(): Guardian[] { return [...GUARDIANS, ...this.state.customGuardians]; }
   guardianships(): Guardianship[] { return [...GUARDIANSHIPS, ...this.state.customGuardianships]; }
   guardianById(id: string): Guardian | undefined { return this.guardians().find((g) => g.id === id); }
+  /**
+   * Resuelve la persona autorizada de un pase: primero busca localmente; si no
+   * está (p. ej. la cargó la familia en otro dispositivo), la reconstruye con
+   * los datos embebidos en el pase firmado.
+   */
+  resolveActor(claims: TokenClaims): Guardian | undefined {
+    const local = this.guardianById(claims.act);
+    if (local) return local;
+    if (claims.act_name) {
+      return {
+        id: claims.act,
+        name: claims.act_name,
+        document: claims.act_doc ?? "",
+        relation: claims.act_rel ?? "Autorizado",
+        emoji: claims.act_emoji ?? "🧑",
+        photo: claims.act_photo,
+        status: "active",
+      };
+    }
+    return undefined;
+  }
   authorizedFor(studentId: string): Guardian[] {
     const ids = this.guardianships().filter((g) => g.studentId === studentId).map((g) => g.guardianId);
     return this.guardians().filter((g) => ids.includes(g.id));
@@ -395,6 +416,11 @@ class Store {
     const preMs = 15 * 60 * 1000; // se habilita 15 min antes
     const nbf = scheduled ? scheduleAt - preMs : now;
     const exp = scheduled ? scheduleAt + windowMs : now + this.state.settings.ttlSeconds * 1000;
+    // Embebemos los datos de la persona autorizada para que el docente los vea
+    // sin backend (incluso en otro dispositivo). La foto solo si es chica, para
+    // que el QR siga siendo escaneable.
+    const actor = this.guardianById(authorizedId);
+    const photo = actor?.photo && actor.photo.length <= 1600 ? actor.photo : undefined;
     const claims: TokenClaims = {
       iss: INSTITUTION.id,
       sub: studentId,
@@ -404,6 +430,11 @@ class Store {
       nbf,
       exp,
       nonce: ulid(),
+      act_name: actor?.name,
+      act_doc: actor?.document,
+      act_rel: actor?.relation,
+      act_emoji: actor?.emoji,
+      act_photo: photo,
     };
     const encoded = encodeJson(claims);
     const sig = sign(encoded, this.state.institutionKey.priv);

@@ -7,6 +7,7 @@ import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
+import { compressImage } from "../lib/image";
 
 const VIEWS: SectionDef[] = [
   { key: "retiro", label: "Autorizar retiro", icon: "🎫" },
@@ -90,7 +91,7 @@ export function Familias() {
   }
 
   useEffect(() => {
-    if (last) QRCode.toDataURL(last.qrPayload, { width: 240, margin: 1 }).then(setQrUrl);
+    if (last) QRCode.toDataURL(last.qrPayload, { width: 240, margin: 1, errorCorrectionLevel: "L" }).then(setQrUrl);
   }, [last?.qrPayload]);
 
   const liveToken = last ? state.tokens.find((t) => t.jti === last.jti) ?? last : null;
@@ -241,7 +242,12 @@ function AddAuthorized({ studentId, onAdded }: { studentId: string; onAdded: (g:
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
-    reader.onload = () => setPhoto(typeof reader.result === "string" ? reader.result : undefined);
+    reader.onload = async () => {
+      if (typeof reader.result !== "string") return;
+      // Miniatura comprimida: así viaja dentro del QR y ocupa poco.
+      const thumb = await compressImage(reader.result, 56, 0.5);
+      setPhoto(thumb);
+    };
     reader.readAsDataURL(f);
   }
 

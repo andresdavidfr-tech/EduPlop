@@ -33,7 +33,7 @@ export function Docentes() {
   const verification = useMemo(() => (scanned ? store.verifyLocally(scanned) : null), [scanned]);
   const claims = verification?.claims;
   const student = claims && STUDENTS.find((s) => s.id === claims.sub);
-  const authorized = claims ? store.guardianById(claims.act) : undefined;
+  const authorized = claims ? store.resolveActor(claims) : undefined;
 
   function handleScan(payload: string) {
     setScannerOpen(false);
