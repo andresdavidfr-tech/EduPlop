@@ -22,6 +22,13 @@ interface State {
 
 const LS_KEY = "eduplop-state-v1";
 
+// Persistencia tolerante a fallos: localStorage puede estar bloqueado en file://
+const safeStorage = {
+  get(k: string): string | null { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* in-memory only */ } },
+  del(k: string) { try { localStorage.removeItem(k); } catch { /* noop */ } },
+};
+
 function freshState(): State {
   return {
     institutionKey: generateKeyPair(),
@@ -41,7 +48,7 @@ class Store {
   private listeners = new Set<() => void>();
 
   constructor() {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = safeStorage.get(LS_KEY);
     this.state = raw ? JSON.parse(raw) : freshState();
   }
 
@@ -53,12 +60,12 @@ class Store {
   getSnapshot = () => this.state;
   private commit(next: Partial<State>) {
     this.state = { ...this.state, ...next };
-    localStorage.setItem(LS_KEY, JSON.stringify(this.state));
+    safeStorage.set(LS_KEY, JSON.stringify(this.state));
     this.listeners.forEach((l) => l());
   }
 
   reset() {
-    localStorage.removeItem(LS_KEY);
+    safeStorage.del(LS_KEY);
     this.state = freshState();
     this.commit({});
   }
