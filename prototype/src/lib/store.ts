@@ -5,6 +5,7 @@ import {
 import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
   Settings, AuditEventType, TokenStatus, Notification, User,
+  Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
 } from "./types";
 import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS } from "./seed";
 
@@ -20,9 +21,25 @@ interface State {
   revokedGuardians: string[]; // lista de revocación (cacheable offline)
   session: string | null; // username logueado
   notifications: Notification[];
+  conversations: Conversation[];
+  agenda: AgendaEvent[];
+  pushEnabled: boolean;
+  notifPrefs: NotifPrefs;
 }
 
-const LS_KEY = "eduplop-state-v2";
+const LS_KEY = "eduplop-state-v3";
+
+function todayPlus(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export const CATEGORY_LABEL: Record<MessageCategory, string> = {
+  absence: "Justificar ausencia",
+  permission: "Pedido de permiso",
+  general: "Consulta general",
+};
 
 // Persistencia tolerante a fallos: localStorage puede estar bloqueado en file://
 const safeStorage = {
@@ -57,6 +74,24 @@ function freshState(): State {
         timestamp: Date.now() - 3600000, readBy: [],
       },
     ],
+    conversations: [
+      {
+        id: "c_seed", familyUser: "familia", studentId: "stu_001", category: "general",
+        subject: "Consulta sobre la merienda",
+        messages: [
+          { from: "familia", fromName: "Laura Fernández", body: "Hola, ¿Mía puede llevar su propia merienda?", ts: Date.now() - 7200000 },
+          { from: "direccion", fromName: "Dirección", body: "¡Hola Laura! Sí, sin problema. Evitá frutos secos por alergias en la sala. 🙂", ts: Date.now() - 5400000 },
+        ],
+        status: "answered", updatedAt: Date.now() - 5400000, readBy: ["familia", "direccion"],
+      },
+    ],
+    agenda: [
+      { id: "a_reunion", title: "Reunión de padres", description: "Primer trimestre — Sala Verde y 1° A.", date: todayPlus(3), time: "18:00", type: "reunion", audienceRole: "family", createdBy: "direccion", rsvps: {} },
+      { id: "a_acto", title: "Acto del 9 de Julio", description: "Vengan con escarapela. Patio central.", date: todayPlus(10), time: "10:00", type: "acto", audienceRole: "all", createdBy: "direccion", rsvps: {} },
+      { id: "a_salida", title: "Salida didáctica al museo", description: "Traer autorización y vianda.", date: todayPlus(17), time: "09:00", type: "salida", audienceRole: "family", createdBy: "docente", rsvps: {} },
+    ],
+    pushEnabled: false,
+    notifPrefs: { pickup: true, message: true, agenda: true, announcement: true },
   };
 }
 
@@ -105,7 +140,32 @@ class Store {
   private pushNotification(n: Omit<Notification, "id" | "timestamp" | "readBy">) {
     const notif: Notification = { ...n, id: ulid("N_"), timestamp: Date.now(), readBy: [] };
     this.commit({ notifications: [notif, ...this.state.notifications] });
+    this.maybePush(n.kind, n.title, n.body);
     return notif;
+  }
+
+  // --- PUSH (Web Notifications API) ---
+  async requestPush(): Promise<boolean> {
+    try {
+      if (!("Notification" in window)) return false;
+      const perm = await Notification.requestPermission();
+      const ok = perm === "granted";
+      this.commit({ pushEnabled: ok });
+      if (ok) this.maybePush("announcement", "Notificaciones activadas ✅", "Vas a recibir avisos de EduPlop en este dispositivo.");
+      return ok;
+    } catch { return false; }
+  }
+  setPushEnabled(v: boolean) { this.commit({ pushEnabled: v }); }
+  setNotifPref(kind: keyof NotifPrefs, v: boolean) {
+    this.commit({ notifPrefs: { ...this.state.notifPrefs, [kind]: v } });
+  }
+  private maybePush(kind: Notification["kind"], title: string, body: string) {
+    try {
+      const prefKey = (kind === "alert" ? "announcement" : kind) as keyof NotifPrefs;
+      if (!this.state.pushEnabled || !this.state.notifPrefs[prefKey]) return;
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      new Notification(title, { body, icon: undefined, tag: ulid() });
+    } catch { /* noop */ }
   }
   sendAnnouncement(audienceRole: "family" | "teacher", title: string, body: string) {
     this.pushNotification({ audienceRole, kind: "announcement", title, body });
@@ -139,6 +199,91 @@ class Store {
       ...target, kind: "pickup",
       title: `✅ ${student?.name ?? "Tu hijo/a"} fue retirado/a`,
       body: `Retiró ${who?.name ?? "un autorizado"} a las ${new Date().toLocaleTimeString()} (${mode}). Validado en la puerta.`,
+    });
+  }
+
+  // --- MENSAJERÍA bidireccional ---
+  startConversation(category: MessageCategory, subject: string, body: string, studentId?: string): Conversation | null {
+    const u = this.currentUser();
+    if (!u) return null;
+    const conv: Conversation = {
+      id: ulid("CONV_"), familyUser: u.username, studentId, category, subject,
+      messages: [{ from: u.username, fromName: u.name, body, ts: Date.now() }],
+      status: "open", updatedAt: Date.now(), readBy: [u.username],
+    };
+    this.commit({ conversations: [conv, ...this.state.conversations] });
+    // avisar al colegio
+    this.pushNotification({
+      audienceRole: "director", kind: "message",
+      title: `💬 Nuevo mensaje de ${u.name}`,
+      body: `${CATEGORY_LABEL[category]}: ${subject}`,
+    });
+    return conv;
+  }
+  replyConversation(id: string, body: string) {
+    const u = this.currentUser();
+    if (!u) return;
+    const fromSchool = u.role !== "family";
+    this.commit({
+      conversations: this.state.conversations.map((c) => {
+        if (c.id !== id) return c;
+        return {
+          ...c,
+          messages: [...c.messages, { from: u.username, fromName: u.name, body, ts: Date.now() }],
+          status: fromSchool ? "answered" : "open",
+          updatedAt: Date.now(),
+          readBy: [u.username],
+        };
+      }),
+    });
+    const conv = this.state.conversations.find((c) => c.id === id);
+    if (fromSchool && conv) {
+      this.pushNotification({
+        audienceUser: conv.familyUser, kind: "message",
+        title: `💬 Respuesta del colegio`,
+        body: `${conv.subject}: ${body.slice(0, 60)}`,
+      });
+    } else if (conv) {
+      this.pushNotification({
+        audienceRole: "director", kind: "message",
+        title: `💬 ${u.name} respondió`,
+        body: `${conv.subject}: ${body.slice(0, 60)}`,
+      });
+    }
+  }
+  conversationsFor(user: User | null): Conversation[] {
+    if (!user) return [];
+    const list = user.role === "family"
+      ? this.state.conversations.filter((c) => c.familyUser === user.username)
+      : this.state.conversations; // colegio ve todas
+    return [...list].sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  // --- AGENDA interactiva ---
+  addAgendaEvent(e: Omit<AgendaEvent, "id" | "rsvps" | "createdBy">) {
+    const u = this.currentUser();
+    const ev: AgendaEvent = { ...e, id: ulid("AG_"), createdBy: u?.username ?? "colegio", rsvps: {} };
+    this.commit({ agenda: [...this.state.agenda, ev] });
+    const audience = e.audienceRole === "teacher" ? "teacher" : "family";
+    this.pushNotification({
+      audienceRole: audience, kind: "agenda",
+      title: `📅 Nuevo evento: ${e.title}`,
+      body: `${e.date}${e.time ? " " + e.time : ""} — ${e.description}`,
+    });
+  }
+  agendaFor(user: User | null): AgendaEvent[] {
+    if (!user) return [];
+    const list = user.role === "family"
+      ? this.state.agenda.filter((e) => e.audienceRole === "family" || e.audienceRole === "all")
+      : this.state.agenda;
+    return [...list].sort((a, b) => a.date.localeCompare(b.date));
+  }
+  rsvp(eventId: string, value: RsvpValue) {
+    const u = this.currentUser();
+    if (!u) return;
+    this.commit({
+      agenda: this.state.agenda.map((e) =>
+        e.id === eventId ? { ...e, rsvps: { ...e.rsvps, [u.username]: value } } : e),
     });
   }
 

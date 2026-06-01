@@ -5,6 +5,7 @@ import { Docentes } from "./modules/Docentes";
 import { Directivo } from "./modules/Directivo";
 import { Login } from "./modules/Login";
 import { NotificationsBell } from "./components/Notifications";
+import { Assistant } from "./components/Assistant";
 import { INSTITUTION, ROLE_MODULES, ROLE_LABEL } from "./lib/seed";
 
 type Tab = "familias" | "docentes" | "directivo";
@@ -72,6 +73,8 @@ function Shell({ allowed, userName, userRole, pendingSync }:
       <footer className="foot">
         Prototipo · firmas <b>Ed25519</b> reales + cadena de auditoría <b>SHA-256</b> · backend simulado en el navegador
       </footer>
+
+      <Assistant />
     </div>
   );
 }

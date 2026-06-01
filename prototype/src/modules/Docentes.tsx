@@ -3,6 +3,8 @@ import { store, useStore } from "../lib/store";
 import { STUDENTS, GUARDIANS, GUARDIANSHIPS, TEACHERS } from "../lib/seed";
 import { QrScanner } from "../components/QrScanner";
 import { playSuccess, playError } from "../lib/sound";
+import { Messages } from "../components/Messages";
+import { Agenda } from "../components/Agenda";
 
 export function Docentes() {
   const state = useStore();
@@ -154,6 +156,9 @@ export function Docentes() {
           </tbody>
         </table>
       </section>
+
+      <Agenda />
+      <Messages />
 
       {scannerOpen && (
         <QrScanner onResult={handleScan} onClose={() => setScannerOpen(false)} onSimulate={simulate} />

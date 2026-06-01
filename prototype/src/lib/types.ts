@@ -116,9 +116,54 @@ export interface Notification {
   id: string;
   audienceRole?: Role; // destinatario por rol (p. ej. comunicado a familias)
   audienceUser?: string; // destinatario puntual (username)
-  kind: "pickup" | "announcement" | "alert" | "message";
+  kind: "pickup" | "announcement" | "alert" | "message" | "agenda";
   title: string;
   body: string;
   timestamp: number;
   readBy: string[]; // usernames que ya la leyeron
+}
+
+// --- Mensajería bidireccional familia ↔ colegio ---
+export type MessageCategory = "absence" | "permission" | "general";
+
+export interface ConvMessage {
+  from: string; // username
+  fromName: string;
+  body: string;
+  ts: number;
+}
+
+export interface Conversation {
+  id: string;
+  familyUser: string; // dueño del hilo (lado familia)
+  studentId?: string;
+  category: MessageCategory;
+  subject: string;
+  messages: ConvMessage[];
+  status: "open" | "answered" | "closed";
+  updatedAt: number;
+  readBy: string[]; // usernames que leyeron el último estado
+}
+
+// --- Agenda interactiva vinculada ---
+export type AgendaType = "reunion" | "acto" | "examen" | "feriado" | "salida" | "otro";
+export type RsvpValue = "yes" | "no" | "maybe";
+
+export interface AgendaEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string; // YYYY-MM-DD
+  time?: string;
+  type: AgendaType;
+  audienceRole: "family" | "teacher" | "all";
+  createdBy: string;
+  rsvps: Record<string, RsvpValue>;
+}
+
+export interface NotifPrefs {
+  pickup: boolean;
+  message: boolean;
+  agenda: boolean;
+  announcement: boolean;
 }

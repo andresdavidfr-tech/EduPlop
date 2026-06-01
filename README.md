@@ -34,6 +34,7 @@ con valor probatorio institucional.
 | [`docs/05-modelo-de-datos.md`](docs/05-modelo-de-datos.md) | Modelo de datos y esquema de entidades. |
 | [`docs/06-api-spec.md`](docs/06-api-spec.md) | Especificación de la API (REST + WebSocket). |
 | [`docs/07-arquitectura-c4.md`](docs/07-arquitectura-c4.md) | Arquitectura C4 (contexto, contenedores, componentes). |
+| [`docs/08-comunicacion-agenda-push-ia.md`](docs/08-comunicacion-agenda-push-ia.md) | Mensajería bidireccional, agenda interactiva, push y asistente de IA. |
 
 ---
 

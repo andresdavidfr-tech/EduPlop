@@ -2,6 +2,9 @@ import { useState } from "react";
 import { store, useStore } from "../lib/store";
 import { STUDENTS, GUARDIANS } from "../lib/seed";
 import { shortHash } from "../lib/crypto";
+import { Messages } from "../components/Messages";
+import { Agenda } from "../components/Agenda";
+import { PushSettings } from "../components/PushSettings";
 
 const TYPE_LABEL: Record<string, string> = {
   token_issued: "QR emitido",
@@ -70,6 +73,11 @@ export function Directivo() {
           {sent && <span className="pill active">✓ Enviado</span>}
         </div>
       </section>
+
+      <Agenda />
+      <Messages />
+
+      <PushSettings />
 
       <section className="card">
         <h2>Configuración de seguridad</h2>

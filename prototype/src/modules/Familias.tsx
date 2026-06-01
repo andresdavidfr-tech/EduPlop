@@ -3,6 +3,9 @@ import QRCode from "qrcode";
 import { store, useStore } from "../lib/store";
 import { STUDENTS, GUARDIANS, GUARDIANSHIPS } from "../lib/seed";
 import type { AuthorizationToken } from "../lib/types";
+import { Messages } from "../components/Messages";
+import { Agenda } from "../components/Agenda";
+import { PushSettings } from "../components/PushSettings";
 
 function statusLabel(s: string) {
   return ({ active: "Listo para usar", consumed: "Ya utilizado", expired: "Vencido", revoked: "Anulado" } as any)[s] ?? s;
@@ -135,6 +138,11 @@ export function Familias() {
           </div>
         ))}
       </section>
+
+      <PushSettings />
+
+      <Agenda />
+      <Messages />
 
       <section className="card">
         <h2>Mis retiros recientes</h2>

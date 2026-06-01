@@ -3,6 +3,10 @@
 Demo navegable de los tres módulos y del flujo de **retiro seguro con QR**, con
 **criptografía real** ejecutándose en el navegador:
 
+- **Mensajería bidireccional** familia ↔ colegio (justificar faltas, permisos, consultas + respuestas en hilo).
+- **Agenda interactiva vinculada**: el colegio publica eventos segmentados y las familias confirman asistencia (RSVP).
+- **Notificaciones push** del navegador (permiso + preferencias por tipo) y centro de notificaciones in-app.
+- **Asistente de IA** contextual por rol (responde con datos reales y guía acciones; en producción se conecta a la Claude API).
 - **Login por rol** (familia / docente / dirección): cada usuario entra a su módulo. Cuentas demo en la pantalla de inicio.
 - **Escaneo con cámara real** (`@zxing/browser`) con **sonido** y un **modal claro** que muestra la persona autorizada y el alumno/a. Fallback de simulación si no hay cámara.
 - **Centro de notificaciones** y **comunicados** colegio ↔ familias (la familia recibe aviso cuando se concreta el retiro).
