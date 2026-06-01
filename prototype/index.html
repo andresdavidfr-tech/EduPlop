@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EduPlop — Hub de Experiencia Familiar</title>
+    <script>
+      // Capturador de errores visible: si el JS falla al cargar/evaluar,
+      // muestra el error en pantalla en vez de dejarla en blanco (útil en móvil).
+      (function () {
+        function show(title, msg) {
+          var el = document.getElementById("root") || document.body;
+          el.innerHTML =
+            '<div style="font:14px/1.5 -apple-system,system-ui,sans-serif;padding:16px;color:#7f1d1d;background:#fef2f2;white-space:pre-wrap;word-break:break-word">' +
+            '<strong>⚠️ ' + title + '</strong>\n\n' + (msg || "") + "</div>";
+        }
+        window.addEventListener("error", function (e) {
+          show("Error de JavaScript", (e.message || "") + "\n" + (e.filename || "") + ":" + (e.lineno || ""));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          show("Promesa rechazada", (e.reason && (e.reason.stack || e.reason.message)) || String(e.reason));
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
