@@ -100,13 +100,35 @@ function freshState(): State {
   };
 }
 
+/**
+ * Carga tolerante a esquemas viejos: fusiona el estado persistido sobre los
+ * valores por defecto. Así, si un estado guardado por una versión anterior no
+ * tiene algún campo (p. ej. `customGuardians`, `agenda`...), no queda
+ * `undefined` y no rompe los `[...spread]` que asumen arrays. Preserva los
+ * datos del usuario que sí existan.
+ */
+function hydrate(raw: string | null): State {
+  const base = freshState();
+  if (!raw) return base;
+  try {
+    const saved = JSON.parse(raw) as Partial<State>;
+    return {
+      ...base,
+      ...saved,
+      settings: { ...base.settings, ...(saved.settings ?? {}) },
+      notifPrefs: { ...base.notifPrefs, ...(saved.notifPrefs ?? {}) },
+    };
+  } catch {
+    return base;
+  }
+}
+
 class Store {
   private state: State;
   private listeners = new Set<() => void>();
 
   constructor() {
-    const raw = safeStorage.get(LS_KEY);
-    this.state = raw ? JSON.parse(raw) : freshState();
+    this.state = hydrate(safeStorage.get(LS_KEY));
   }
 
   // --- React glue ---
