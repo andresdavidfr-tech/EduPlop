@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { store } from "../lib/store";
 import { USERS, ROLE_LABEL } from "../lib/seed";
+import { Logo } from "../components/Logo";
 
 export function Login() {
   const [username, setUsername] = useState("");
@@ -22,7 +23,7 @@ export function Login() {
     <div className="login-wrap">
       <div className="login-card">
         <div className="login-brand">
-          <span className="logo">🎒</span>
+          <Logo size={64} />
           <h1>EduPlop</h1>
           <p className="muted">Hub de Experiencia Familiar · Colegio San Martín</p>
         </div>

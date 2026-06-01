@@ -6,6 +6,7 @@ import { Directivo } from "./modules/Directivo";
 import { Login } from "./modules/Login";
 import { NotificationsBell } from "./components/Notifications";
 import { Assistant } from "./components/Assistant";
+import { Logo } from "./components/Logo";
 import { INSTITUTION, ROLE_MODULES, ROLE_LABEL } from "./lib/seed";
 
 type Tab = "familias" | "docentes" | "directivo";
@@ -36,7 +37,7 @@ function Shell({ allowed, userName, userRole, pendingSync }:
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="logo">🎒</span>
+          <Logo size={36} />
           <div>
             <h1>EduPlop</h1>
             <small>{INSTITUTION.name}</small>
