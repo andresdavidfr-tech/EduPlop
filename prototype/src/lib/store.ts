@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import {
-  generateKeyPair, sign, verify, sha256hex, encodeJson, ulid, type KeyPair,
+  generateKeyPair, keyPairFromSeed, sign, verify, sha256hex, encodeJson, ulid, type KeyPair,
 } from "./crypto";
 import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
@@ -32,6 +32,12 @@ interface State {
 
 const LS_KEY = "eduplop-state-v3";
 
+// Llave de institución FIJA (compartida por todos los dispositivos) para que
+// un pase firmado en un teléfono se verifique en cualquier otro. En producción
+// la privada estaría en el servidor; en este prototipo es una semilla constante.
+const INSTITUTION_SEED = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
+const INSTITUTION_KEY = keyPairFromSeed(INSTITUTION_SEED);
+
 function todayPlus(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -53,7 +59,7 @@ const safeStorage = {
 
 function freshState(): State {
   return {
-    institutionKey: generateKeyPair(),
+    institutionKey: INSTITUTION_KEY,
     deviceKey: generateKeyPair(),
     tokens: [],
     receipts: [],
@@ -115,6 +121,10 @@ function hydrate(raw: string | null): State {
     return {
       ...base,
       ...saved,
+      // La llave de institución es ahora FIJA y compartida: ignoramos cualquier
+      // llave aleatoria persistida por versiones anteriores (si no, los pases
+      // firmados entre dispositivos no se verificarían entre sí).
+      institutionKey: base.institutionKey,
       settings: { ...base.settings, ...(saved.settings ?? {}) },
       notifPrefs: { ...base.notifPrefs, ...(saved.notifPrefs ?? {}) },
     };

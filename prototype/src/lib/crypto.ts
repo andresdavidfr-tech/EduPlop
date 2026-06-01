@@ -35,6 +35,19 @@ export function generateKeyPair(): KeyPair {
   return { priv: bytesToHex(priv), pub: bytesToHex(pub) };
 }
 
+/**
+ * Deriva un par de llaves Ed25519 determinístico a partir de una semilla fija
+ * (32 bytes en hex). Útil para que la llave de la institución sea la MISMA en
+ * todos los dispositivos, de modo que un pase firmado en el teléfono de la
+ * familia se pueda verificar en el del docente. En producción, la privada
+ * viviría solo en el servidor; acá es un prototipo client-side.
+ */
+export function keyPairFromSeed(seedHex: string): KeyPair {
+  const priv = hexToBytes(seedHex);
+  const pub = ed25519.getPublicKey(priv);
+  return { priv: seedHex, pub: bytesToHex(pub) };
+}
+
 export function sign(message: string, privHex: string): string {
   const sig = ed25519.sign(utf8ToBytes(message), hexToBytes(privHex));
   return b64urlEncode(sig);
