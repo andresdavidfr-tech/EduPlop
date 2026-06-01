@@ -31,6 +31,24 @@ con valor probatorio institucional.
 | [`docs/02-user-journey-data-flow.md`](docs/02-user-journey-data-flow.md) | User journey del retiro QR y flujo de validación offline/online entre módulos. |
 | [`docs/03-arquitectura-token-auditoria.md`](docs/03-arquitectura-token-auditoria.md) | Arquitectura de la huella digital inmodificable y cadena de auditoría. |
 | [`docs/04-manejo-excepciones.md`](docs/04-manejo-excepciones.md) | Casos extremos críticos y respuesta del sistema. |
+| [`docs/05-modelo-de-datos.md`](docs/05-modelo-de-datos.md) | Modelo de datos y esquema de entidades. |
+| [`docs/06-api-spec.md`](docs/06-api-spec.md) | Especificación de la API (REST + WebSocket). |
+| [`docs/07-arquitectura-c4.md`](docs/07-arquitectura-c4.md) | Arquitectura C4 (contexto, contenedores, componentes). |
+
+---
+
+## 4. Prototipo funcional (demo)
+
+En [`prototype/`](prototype/) hay una **demo navegable** (React + Vite) que implementa el flujo
+real de retiro con **criptografía verdadera** (firmas Ed25519 vía `@noble/curves`, cadena de
+hash SHA-256) sobre un backend simulado en el navegador. Demuestra los tres módulos, el modo
+**offline/online**, el **comprobante tokenizado encadenado** y la **verificación de integridad**.
+
+```bash
+cd prototype
+npm install
+npm run dev      # abre http://localhost:5173
+```
 
 ---
 
