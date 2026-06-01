@@ -3,9 +3,12 @@
 Demo navegable de los tres módulos y del flujo de **retiro seguro con QR**, con
 **criptografía real** ejecutándose en el navegador:
 
+- **Login por rol** (familia / docente / dirección): cada usuario entra a su módulo. Cuentas demo en la pantalla de inicio.
+- **Escaneo con cámara real** (`@zxing/browser`) con **sonido** y un **modal claro** que muestra la persona autorizada y el alumno/a. Fallback de simulación si no hay cámara.
+- **Centro de notificaciones** y **comunicados** colegio ↔ familias (la familia recibe aviso cuando se concreta el retiro).
 - **Firmas Ed25519** (`@noble/curves`) para el token del QR y la doble atestación de los comprobantes.
 - **Cadena de auditoría SHA-256** (`@noble/hashes`) append-only, *tamper-evident*.
-- **Backend simulado** en `localStorage` (sin servidor), para poder probar el flujo completo offline.
+- **Backend simulado** en `localStorage` (sin servidor), para probar el flujo completo offline.
 
 ## Ejecutar
 
@@ -13,6 +16,17 @@ Demo navegable de los tres módulos y del flujo de **retiro seguro con QR**, con
 npm install
 npm run dev      # http://localhost:5173
 ```
+
+> La cámara requiere contexto seguro (https:// o localhost). El `EduPlop-demo.html`
+> abierto desde `file://` usa el modo "simular escaneo"; en el deploy de Vercel (https)
+> se abre la cámara real.
+
+### Cuentas de demostración
+| Rol | Usuario | Contraseña |
+|---|---|---|
+| Familia | `familia` | `familia123` |
+| Docente | `docente` | `docente123` |
+| Dirección | `direccion` | `direccion123` |
 
 ## Qué demuestra (mapeo con la documentación de diseño)
 

@@ -100,3 +100,25 @@ export interface Settings {
   clockSkewSeconds: number;
   deviceOnline: boolean; // toggle del dispositivo docente (online/offline)
 }
+
+export type Role = "family" | "teacher" | "director";
+
+export interface User {
+  username: string;
+  password: string; // demo: en producción nunca en claro (hash + backend)
+  role: Role;
+  name: string;
+  guardianId?: string; // si role=family
+  teacherId?: string; // si role=teacher
+}
+
+export interface Notification {
+  id: string;
+  audienceRole?: Role; // destinatario por rol (p. ej. comunicado a familias)
+  audienceUser?: string; // destinatario puntual (username)
+  kind: "pickup" | "announcement" | "alert" | "message";
+  title: string;
+  body: string;
+  timestamp: number;
+  readBy: string[]; // usernames que ya la leyeron
+}

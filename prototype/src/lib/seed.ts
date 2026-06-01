@@ -1,4 +1,4 @@
-import type { Student, Guardian, Guardianship } from "./types";
+import type { Student, Guardian, Guardianship, User } from "./types";
 
 export const INSTITUTION = { id: "inst_8842", name: "Colegio San Martín" };
 
@@ -30,3 +30,22 @@ export const TEACHERS = [
 ];
 
 export const DEVICE_ID = "dev_door_03";
+
+// Cuentas de demostración (en producción: hash + backend de identidad / OIDC)
+export const USERS: User[] = [
+  { username: "familia", password: "familia123", role: "family", name: "Laura Fernández", guardianId: "guar_010" },
+  { username: "docente", password: "docente123", role: "teacher", name: "Doc. Pérez", teacherId: "teacher_119" },
+  { username: "direccion", password: "direccion123", role: "director", name: "Dirección — Colegio San Martín" },
+];
+
+export const ROLE_MODULES: Record<string, ("familias" | "docentes" | "directivo")[]> = {
+  family: ["familias"],
+  teacher: ["docentes"],
+  director: ["familias", "docentes", "directivo"], // dirección supervisa todo
+};
+
+export const ROLE_LABEL: Record<string, string> = {
+  family: "Familia",
+  teacher: "Docente",
+  director: "Dirección",
+};

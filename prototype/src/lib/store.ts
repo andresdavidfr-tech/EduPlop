@@ -4,9 +4,9 @@ import {
 } from "./crypto";
 import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
-  Settings, AuditEventType, TokenStatus,
+  Settings, AuditEventType, TokenStatus, Notification, User,
 } from "./types";
-import { INSTITUTION, DEVICE_ID } from "./seed";
+import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS } from "./seed";
 
 interface State {
   institutionKey: KeyPair;
@@ -18,9 +18,11 @@ interface State {
   settings: Settings;
   consumedLocally: string[]; // jti consumidos en el dispositivo (anti-reuso offline)
   revokedGuardians: string[]; // lista de revocación (cacheable offline)
+  session: string | null; // username logueado
+  notifications: Notification[];
 }
 
-const LS_KEY = "eduplop-state-v1";
+const LS_KEY = "eduplop-state-v2";
 
 // Persistencia tolerante a fallos: localStorage puede estar bloqueado en file://
 const safeStorage = {
@@ -37,9 +39,24 @@ function freshState(): State {
     receipts: [],
     ledger: [],
     incidents: [],
-    settings: { ttlSeconds: 60, clockSkewSeconds: 5, deviceOnline: true },
+    settings: { ttlSeconds: 300, clockSkewSeconds: 30, deviceOnline: true },
     consumedLocally: [],
     revokedGuardians: [],
+    session: null,
+    notifications: [
+      {
+        id: "n_welcome", audienceRole: "family", kind: "announcement",
+        title: "¡Bienvenidos al Hub de EduPlop!",
+        body: "Desde acá podés autorizar retiros, recibir avisos del colegio y ver la actividad de tus hijos/as.",
+        timestamp: Date.now() - 86400000, readBy: [],
+      },
+      {
+        id: "n_reunion", audienceRole: "family", kind: "announcement",
+        title: "Reunión de padres — jueves 18:00",
+        body: "Los esperamos en el SUM para la reunión del primer trimestre. ¡No falten!",
+        timestamp: Date.now() - 3600000, readBy: [],
+      },
+    ],
   };
 }
 
@@ -71,6 +88,59 @@ class Store {
   }
 
   get institutionPub() { return this.state.institutionKey.pub; }
+
+  // --- AUTENTICACIÓN (demo client-side) ---
+  login(username: string, password: string): { ok: boolean; reason?: string } {
+    const u = USERS.find((x) => x.username === username.trim().toLowerCase() && x.password === password);
+    if (!u) return { ok: false, reason: "Usuario o contraseña incorrectos" };
+    this.commit({ session: u.username });
+    return { ok: true };
+  }
+  logout() { this.commit({ session: null }); }
+  currentUser(): User | null {
+    return USERS.find((u) => u.username === this.state.session) ?? null;
+  }
+
+  // --- NOTIFICACIONES / COMUNICACIÓN ---
+  private pushNotification(n: Omit<Notification, "id" | "timestamp" | "readBy">) {
+    const notif: Notification = { ...n, id: ulid("N_"), timestamp: Date.now(), readBy: [] };
+    this.commit({ notifications: [notif, ...this.state.notifications] });
+    return notif;
+  }
+  sendAnnouncement(audienceRole: "family" | "teacher", title: string, body: string) {
+    this.pushNotification({ audienceRole, kind: "announcement", title, body });
+  }
+  notificationsFor(user: User | null): Notification[] {
+    if (!user) return [];
+    return this.state.notifications.filter(
+      (n) => (n.audienceRole && n.audienceRole === user.role) || n.audienceUser === user.username
+    );
+  }
+  unreadCountFor(user: User | null): number {
+    if (!user) return 0;
+    return this.notificationsFor(user).filter((n) => !n.readBy.includes(user.username)).length;
+  }
+  markAllRead(user: User | null) {
+    if (!user) return;
+    this.commit({
+      notifications: this.state.notifications.map((n) =>
+        n.readBy.includes(user.username) ? n : { ...n, readBy: [...n.readBy, user.username] }),
+    });
+  }
+
+  /** Avisa a la familia (tutor principal) que su hijo/a fue retirado. */
+  private notifyFamilyOfPickup(studentId: string, authorizedId: string, mode: string) {
+    const link = GUARDIANSHIPS.find((g) => g.studentId === studentId && g.role === "primary_guardian");
+    const famUser = USERS.find((u) => u.role === "family" && u.guardianId === link?.guardianId);
+    const student = STUDENTS.find((s) => s.id === studentId);
+    const who = GUARDIANS.find((g) => g.id === authorizedId);
+    const target = famUser ? { audienceUser: famUser.username } : { audienceRole: "family" as const };
+    this.pushNotification({
+      ...target, kind: "pickup",
+      title: `✅ ${student?.name ?? "Tu hijo/a"} fue retirado/a`,
+      body: `Retiró ${who?.name ?? "un autorizado"} a las ${new Date().toLocaleTimeString()} (${mode}). Validado en la puerta.`,
+    });
+  }
 
   // --- Auditoría: cadena hash append-only ---
   private appendAudit(type: AuditEventType, refId: string, actorId: string, detail: string) {
@@ -199,6 +269,7 @@ class Store {
       this.setTokenStatus(claims.jti, "consumed");
       this.appendAudit("pickup_validated", receipt.receiptId, teacherId,
         `Salida ONLINE: ${claims.sub} retirado por ${claims.act}`);
+      this.notifyFamilyOfPickup(claims.sub, claims.act, "online");
     } else {
       // offline: encolar, firmar solo con dispositivo, NO marcar consumido en servidor
       receipt = { ...receiptCore, payloadHash, deviceSignature, pendingSync: true };
@@ -237,6 +308,7 @@ class Store {
         this.setTokenStatus(r.tokenJti, "consumed");
         this.appendAudit("pickup_synced", r.receiptId, r.validatedBy,
           `Comprobante OFFLINE reconciliado: ${r.studentId} retirado por ${r.authorizedId}`);
+        this.notifyFamilyOfPickup(r.studentId, r.authorizedId, "offline");
       }
     }
     return { synced: pending.length - conflicts, conflicts };
@@ -305,6 +377,7 @@ class Store {
     this.commit({ receipts: [receipt, ...this.state.receipts] });
     this.appendAudit("pickup_manual", receipt.receiptId, teacherId,
       `Retiro MANUAL (contingencia): ${studentId} retirado por ${authorizedId}`);
+    this.notifyFamilyOfPickup(studentId, authorizedId, "manual");
     return { ok: true, receipt };
   }
 

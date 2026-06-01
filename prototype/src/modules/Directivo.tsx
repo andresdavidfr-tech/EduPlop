@@ -25,6 +25,18 @@ export function Directivo() {
   const offline = state.receipts.filter((r) => r.mode === "offline").length;
   const failed = state.ledger.filter((e) => e.type === "pickup_failed").length;
 
+  // compositor de comunicados
+  const [audience, setAudience] = useState<"family" | "teacher">("family");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [sent, setSent] = useState(false);
+  function enviar() {
+    if (!title.trim()) return;
+    store.sendAnnouncement(audience, title.trim(), body.trim());
+    setTitle(""); setBody(""); setSent(true);
+    setTimeout(() => setSent(false), 2500);
+  }
+
   return (
     <div className="grid">
       <section className="kpis span2">
@@ -33,6 +45,30 @@ export function Directivo() {
         <div className="kpi"><b>{offline}</b><small>En modo offline</small></div>
         <div className="kpi"><b>{failed}</b><small>Intentos fallidos</small></div>
         <div className="kpi alert"><b>{state.incidents.length}</b><small>Incidentes</small></div>
+      </section>
+
+      <section className="card span2">
+        <h2>📣 Enviar comunicado</h2>
+        <p className="muted small">Comunicate con las familias o el equipo docente. Les llega como notificación.</p>
+        <div className="row gap wrap">
+          <div>
+            <label>Para</label>
+            <select value={audience} onChange={(e) => setAudience(e.target.value as any)}>
+              <option value="family">👨‍👩‍👧 Familias</option>
+              <option value="teacher">🧑‍🏫 Docentes</option>
+            </select>
+          </div>
+          <div className="grow">
+            <label>Título</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Acto del 9 de Julio" />
+          </div>
+        </div>
+        <label>Mensaje</label>
+        <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escribí el aviso…" />
+        <div className="row gap" style={{ marginTop: 12 }}>
+          <button className="primary" onClick={enviar}>Enviar comunicado</button>
+          {sent && <span className="pill active">✓ Enviado</span>}
+        </div>
       </section>
 
       <section className="card">
