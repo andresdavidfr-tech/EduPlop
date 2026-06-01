@@ -6,6 +6,15 @@ import type { AuthorizationToken } from "../lib/types";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { PushSettings } from "../components/PushSettings";
+import { SectionNav, type SectionDef } from "../components/SectionNav";
+
+const VIEWS: SectionDef[] = [
+  { key: "retiro", label: "Autorizar retiro", icon: "🎫" },
+  { key: "historial", label: "Mis retiros", icon: "📋" },
+  { key: "agenda", label: "Agenda", icon: "📅" },
+  { key: "mensajes", label: "Mensajes", icon: "💬" },
+  { key: "notif", label: "Notificaciones", icon: "🔔" },
+];
 
 function statusLabel(s: string) {
   return ({ active: "Listo para usar", consumed: "Ya utilizado", expired: "Vencido", revoked: "Anulado", scheduled: "Programado" } as any)[s] ?? s;
@@ -32,6 +41,7 @@ function defaultTime() {
 export function Familias() {
   const state = useStore();
   const user = store.currentUser();
+  const [view, setView] = useState("retiro");
 
   const myStudents = useMemo(() => {
     if (user?.role === "family" && user.guardianId) {
@@ -111,6 +121,9 @@ export function Familias() {
 
   return (
     <div className="grid two">
+      <SectionNav views={VIEWS} active={view} onChange={setView} />
+
+      {view === "retiro" && <>
       <section className="card">
         <h2>Autorizar un retiro</h2>
         <p className="muted">Generá un pase para que alguien retire a tu hijo/a. Mostrá el código en la puerta y listo. ✨</p>
@@ -182,12 +195,14 @@ export function Familias() {
           <div className="empty">Tu pase aparecerá acá 📲</div>
         )}
       </section>
+      </>}
 
-      <PushSettings />
+      {view === "notif" && <PushSettings />}
 
-      <Agenda />
-      <Messages />
+      {view === "agenda" && <Agenda />}
+      {view === "mensajes" && <Messages />}
 
+      {view === "historial" && <>
       <section className="card span2">
         <h2>Mis retiros recientes</h2>
         <table className="tbl">
@@ -210,6 +225,7 @@ export function Familias() {
           </tbody>
         </table>
       </section>
+      </>}
     </div>
   );
 }

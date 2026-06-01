@@ -5,6 +5,18 @@ import { shortHash } from "../lib/crypto";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { PushSettings } from "../components/PushSettings";
+import { SectionNav, type SectionDef } from "../components/SectionNav";
+
+const VIEWS: SectionDef[] = [
+  { key: "panel", label: "Panel", icon: "📊" },
+  { key: "comunicado", label: "Comunicado", icon: "📣" },
+  { key: "agenda", label: "Agenda", icon: "📅" },
+  { key: "mensajes", label: "Mensajes", icon: "💬" },
+  { key: "seguridad", label: "Seguridad", icon: "🔐" },
+  { key: "autorizados", label: "Autorizados", icon: "👥" },
+  { key: "incidentes", label: "Incidentes", icon: "⚠️" },
+  { key: "registros", label: "Auditoría", icon: "📜" },
+];
 
 const TYPE_LABEL: Record<string, string> = {
   token_issued: "QR emitido",
@@ -22,6 +34,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export function Directivo() {
   const state = useStore();
+  const [view, setView] = useState("panel");
   const [chain, setChain] = useState<{ valid: boolean; brokenAt?: number; checked: number } | null>(null);
 
   const validated = state.receipts.filter((r) => !r.pendingSync).length;
@@ -42,6 +55,9 @@ export function Directivo() {
 
   return (
     <div className="grid">
+      <SectionNav views={VIEWS} active={view} onChange={setView} />
+
+      {view === "panel" && (
       <section className="kpis span2">
         <div className="kpi"><b>{state.receipts.length}</b><small>Retiros registrados</small></div>
         <div className="kpi"><b>{validated}</b><small>Validados</small></div>
@@ -49,7 +65,9 @@ export function Directivo() {
         <div className="kpi"><b>{failed}</b><small>Intentos fallidos</small></div>
         <div className="kpi alert"><b>{state.incidents.length}</b><small>Incidentes</small></div>
       </section>
+      )}
 
+      {view === "comunicado" && (
       <section className="card span2">
         <h2>📣 Enviar comunicado</h2>
         <p className="muted small">Comunicate con las familias o el equipo docente. Les llega como notificación.</p>
@@ -73,10 +91,12 @@ export function Directivo() {
           {sent && <span className="pill active">✓ Enviado</span>}
         </div>
       </section>
+      )}
 
-      <Agenda />
-      <Messages />
+      {view === "agenda" && <Agenda />}
+      {view === "mensajes" && <Messages />}
 
+      {view === "seguridad" && <>
       <PushSettings />
 
       <section className="card">
@@ -105,7 +125,9 @@ export function Directivo() {
           </div>
         )}
       </section>
+      </>}
 
+      {view === "autorizados" && (
       <section className="card">
         <h2>Autorizados (lista de revocación)</h2>
         <p className="muted small">Revocar suspende a la persona en todos los retiros (incluso offline, vía caché).</p>
@@ -128,7 +150,9 @@ export function Directivo() {
           </tbody>
         </table>
       </section>
+      )}
 
+      {view === "incidentes" && (
       <section className="card span2">
         <h2>Incidentes</h2>
         {state.incidents.length === 0 && <p className="muted">Sin incidentes.</p>}
@@ -147,7 +171,9 @@ export function Directivo() {
           </div>
         ))}
       </section>
+      )}
 
+      {view === "registros" && <>
       <section className="card span2">
         <h2>Libro de auditoría (ledger encadenado)</h2>
         <table className="tbl">
@@ -191,6 +217,7 @@ export function Directivo() {
           </tbody>
         </table>
       </section>
+      </>}
     </div>
   );
 }

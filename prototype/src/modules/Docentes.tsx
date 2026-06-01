@@ -6,10 +6,20 @@ import { Avatar } from "../components/Avatar";
 import { playSuccess, playError } from "../lib/sound";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
+import { SectionNav, type SectionDef } from "../components/SectionNav";
+
+const VIEWS: SectionDef[] = [
+  { key: "puerta", label: "Puerta / Aula", icon: "🚪" },
+  { key: "manual", label: "Registro manual", icon: "✍️" },
+  { key: "salidas", label: "Salidas de hoy", icon: "📋" },
+  { key: "agenda", label: "Agenda", icon: "📅" },
+  { key: "mensajes", label: "Mensajes", icon: "💬" },
+];
 
 export function Docentes() {
   const state = useStore();
   const user = store.currentUser();
+  const [view, setView] = useState("puerta");
   const teacherId = user?.teacherId ?? TEACHERS[0].id;
   const teacherName = user?.name ?? TEACHERS[0].name;
 
@@ -70,6 +80,9 @@ export function Docentes() {
 
   return (
     <div className="grid two">
+      <SectionNav views={VIEWS} active={view} onChange={setView} />
+
+      {view === "puerta" && <>
       <section className="card">
         <div className="row between">
           <h2>Puerta / Aula</h2>
@@ -108,9 +121,11 @@ export function Docentes() {
           <div key={a.id} className="aviso"><b>{a.title}</b><p className="muted small">{a.body}</p></div>
         ))}
       </section>
+      </>}
 
       {toast && <div className={`toast span2 ${toast.ok ? "ok" : "bad"}`}>{toast.msg}</div>}
 
+      {view === "manual" && (
       <section className="card span2">
         <h2>Registro manual (si no hay pase)</h2>
         <p className="muted small">Para casos sin QR (sin app, falla total). Queda registrado igual y se avisa a la familia.</p>
@@ -132,7 +147,9 @@ export function Docentes() {
           <button className="ghost" onClick={manual}>Registrar retiro manual</button>
         </div>
       </section>
+      )}
 
+      {view === "salidas" && (
       <section className="card span2">
         <h2>Salidas de hoy</h2>
         <table className="tbl">
@@ -154,9 +171,10 @@ export function Docentes() {
           </tbody>
         </table>
       </section>
+      )}
 
-      <Agenda />
-      <Messages />
+      {view === "agenda" && <Agenda />}
+      {view === "mensajes" && <Messages />}
 
       {scannerOpen && (
         <QrScanner onResult={handleScan} onClose={() => setScannerOpen(false)} onSimulate={simulate} />
