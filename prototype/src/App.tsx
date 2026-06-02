@@ -8,6 +8,7 @@ import { NotificationsBell } from "./components/Notifications";
 import { Assistant } from "./components/Assistant";
 import { Logo } from "./components/Logo";
 import { INSTITUTION, ROLE_MODULES, ROLE_LABEL } from "./lib/seed";
+import { SYNC_ENABLED } from "./lib/supabaseConfig";
 
 type Tab = "familias" | "docentes" | "directivo";
 
@@ -72,8 +73,10 @@ function Shell({ allowed, userName, userRole, pendingSync }:
       </main>
 
       <footer className="foot">
-        Prototipo (demo de un dispositivo) · firmas <b>Ed25519</b> reales + cadena de auditoría <b>SHA-256</b> · backend simulado en el navegador.
-        <br />La validación de un pase se refleja dentro de <b>este mismo navegador</b>; sincronizar el estado entre distintos teléfonos requeriría un backend compartido.
+        Prototipo · firmas <b>Ed25519</b> reales + cadena de auditoría <b>SHA-256</b>.
+        {SYNC_ENABLED
+          ? <> Sincronización entre dispositivos <b>activa</b> ☁️ (Supabase).</>
+          : <><br />Demo de un dispositivo: la validación se refleja dentro de <b>este mismo navegador</b>; sincronizar entre teléfonos requeriría un backend compartido.</>}
       </footer>
 
       <Assistant />

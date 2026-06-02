@@ -9,6 +9,7 @@ import type {
   Guardian, Guardianship,
 } from "./types";
 import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS } from "./seed";
+import { SYNC_ENABLED, pullShared, pushShared } from "./sync";
 
 interface State {
   institutionKey: KeyPair;
@@ -31,6 +32,19 @@ interface State {
 }
 
 const LS_KEY = "eduplop-state-v3";
+
+// Campos que se COMPARTEN entre dispositivos (vía Supabase). El resto
+// (sesión, llaves, anti-reuso local, prefs de push) son por dispositivo.
+const SHARED_KEYS: (keyof State)[] = [
+  "tokens", "receipts", "ledger", "incidents", "settings", "revokedGuardians",
+  "notifications", "conversations", "agenda", "customGuardians", "customGuardianships",
+];
+
+function pickShared(s: State): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of SHARED_KEYS) out[k] = s[k];
+  return out;
+}
 
 // Llave de institución FIJA (compartida por todos los dispositivos) para que
 // un pase firmado en un teléfono se verifique en cualquier otro. En producción
@@ -137,8 +151,14 @@ class Store {
   private state: State;
   private listeners = new Set<() => void>();
 
+  // --- sincronización entre dispositivos (Supabase) ---
+  private lastSyncedAt = "";
+  private pushTimer: ReturnType<typeof setTimeout> | null = null;
+  private pulling = false;
+
   constructor() {
     this.state = hydrate(safeStorage.get(LS_KEY));
+    if (SYNC_ENABLED) this.initSync();
   }
 
   // --- React glue ---
@@ -151,12 +171,66 @@ class Store {
     this.state = { ...this.state, ...next };
     safeStorage.set(LS_KEY, JSON.stringify(this.state));
     this.listeners.forEach((l) => l());
+    // Si cambió algún campo compartido, lo subimos (debounced).
+    if (SYNC_ENABLED && SHARED_KEYS.some((k) => k in next)) this.schedulePush();
   }
 
   reset() {
     safeStorage.del(LS_KEY);
     this.state = freshState();
     this.commit({});
+    if (SYNC_ENABLED) this.schedulePush();
+  }
+
+  // --- Sync helpers ---
+  private async initSync() {
+    const remote = await pullShared();
+    if (remote?.data) {
+      this.applyRemote(remote.data, remote.updated_at);
+    } else {
+      // Tabla vacía: este dispositivo siembra el estado compartido inicial.
+      const at = await pushShared(pickShared(this.state));
+      if (at) this.lastSyncedAt = at;
+    }
+    // Polling: detecta cambios hechos en otros dispositivos.
+    setInterval(() => this.poll(), 3000);
+    // Al volver el foco, refresca enseguida.
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", () => this.poll());
+    }
+  }
+
+  private async poll() {
+    if (!SYNC_ENABLED || this.pulling) return;
+    this.pulling = true;
+    try {
+      const remote = await pullShared();
+      if (remote && remote.updated_at !== this.lastSyncedAt) {
+        this.applyRemote(remote.data, remote.updated_at);
+      }
+    } finally {
+      this.pulling = false;
+    }
+  }
+
+  /** Aplica el estado compartido remoto preservando los campos locales. */
+  private applyRemote(data: Record<string, unknown>, updatedAt: string) {
+    const shared: Partial<State> = {};
+    for (const k of SHARED_KEYS) {
+      if (k in data) (shared as Record<string, unknown>)[k] = data[k];
+    }
+    this.state = { ...this.state, ...shared };
+    this.lastSyncedAt = updatedAt;
+    safeStorage.set(LS_KEY, JSON.stringify(this.state));
+    this.listeners.forEach((l) => l());
+  }
+
+  private schedulePush() {
+    if (this.pushTimer) clearTimeout(this.pushTimer);
+    this.pushTimer = setTimeout(async () => {
+      const at = await pushShared(pickShared(this.state));
+      if (at) this.lastSyncedAt = at;
+    }, 600);
   }
 
   get institutionPub() { return this.state.institutionKey.pub; }

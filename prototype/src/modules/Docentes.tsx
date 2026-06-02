@@ -7,6 +7,7 @@ import { playSuccess, playError } from "../lib/sound";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
+import { SYNC_ENABLED } from "../lib/supabaseConfig";
 
 const VIEWS: SectionDef[] = [
   { key: "puerta", label: "Puerta / Aula", icon: "🚪" },
@@ -98,9 +99,11 @@ export function Docentes() {
           📷 Escanear pase de retiro
         </button>
 
-        <div className="note demo-note">
-          🔎 <b>Demo de un dispositivo:</b> la validación se registra en este mismo navegador. Para ver el flujo completo, generá el pase y validálo en la misma sesión (o usá “Simular” en el escáner). Sincronizar el estado entre teléfonos distintos requeriría un backend compartido.
-        </div>
+        {!SYNC_ENABLED && (
+          <div className="note demo-note">
+            🔎 <b>Demo de un dispositivo:</b> la validación se registra en este mismo navegador. Para ver el flujo completo, generá el pase y validálo en la misma sesión (o usá “Simular” en el escáner). Sincronizar el estado entre teléfonos distintos requeriría un backend compartido.
+          </div>
+        )}
 
         {!state.settings.deviceOnline && (
           <div className="note offline-note">
