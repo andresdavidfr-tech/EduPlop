@@ -490,11 +490,11 @@ class Store {
     const preMs = 15 * 60 * 1000; // se habilita 15 min antes
     const nbf = scheduled ? scheduleAt - preMs : now;
     const exp = scheduled ? scheduleAt + windowMs : now + this.state.settings.ttlSeconds * 1000;
-    // Embebemos los datos de la persona autorizada para que el docente los vea
-    // sin backend (incluso en otro dispositivo). La foto solo si es chica, para
-    // que el QR siga siendo escaneable.
+    // Embebemos solo TEXTO de la persona autorizada (nombre, DNI, vínculo,
+    // emoji) para que el QR siga siendo liviano y escaneable. La FOTO ya no va
+    // en el QR (haría el código demasiado denso): viaja por la sincronización
+    // (customGuardians) y el docente la ve vía resolveActor.
     const actor = this.guardianById(authorizedId);
-    const photo = actor?.photo && actor.photo.length <= 1600 ? actor.photo : undefined;
     const claims: TokenClaims = {
       iss: INSTITUTION.id,
       sub: studentId,
@@ -508,7 +508,6 @@ class Store {
       act_doc: actor?.document,
       act_rel: actor?.relation,
       act_emoji: actor?.emoji,
-      act_photo: photo,
     };
     const encoded = encodeJson(claims);
     const sig = sign(encoded, this.state.institutionKey.priv);

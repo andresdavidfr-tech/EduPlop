@@ -92,7 +92,7 @@ export function Familias() {
   }
 
   useEffect(() => {
-    if (last) QRCode.toDataURL(last.qrPayload, { width: 240, margin: 1, errorCorrectionLevel: "L" }).then(setQrUrl);
+    if (last) QRCode.toDataURL(last.qrPayload, { width: 280, margin: 2, errorCorrectionLevel: "M" }).then(setQrUrl);
   }, [last?.qrPayload]);
 
   const liveToken = last ? state.tokens.find((t) => t.jti === last.jti) ?? last : null;
