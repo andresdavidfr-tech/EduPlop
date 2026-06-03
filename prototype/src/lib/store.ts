@@ -20,6 +20,7 @@ interface State {
   incidents: Incident[];
   settings: Settings;
   consumedLocally: string[]; // jti consumidos en el dispositivo (anti-reuso offline)
+  consumedJtis: string[]; // jti efectivamente retirados (compartido entre dispositivos)
   revokedGuardians: string[]; // lista de revocación (cacheable offline)
   session: string | null; // username logueado
   notifications: Notification[];
@@ -37,13 +38,56 @@ const LS_KEY = "eduplop-state-v3";
 // (sesión, llaves, anti-reuso local, prefs de push) son por dispositivo.
 const SHARED_KEYS: (keyof State)[] = [
   "tokens", "receipts", "ledger", "incidents", "settings", "revokedGuardians",
-  "notifications", "conversations", "agenda", "customGuardians", "customGuardianships",
+  "consumedJtis", "notifications", "conversations", "agenda", "customGuardians",
+  "customGuardianships",
 ];
 
 function pickShared(s: State): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const k of SHARED_KEYS) out[k] = s[k];
   return out;
+}
+
+// --- Fusión de estado compartido (evita perder datos al sincronizar) ---
+function unionBy<T>(a: T[], b: T[], key: (x: T) => string, prefer?: (x: T, y: T) => T): T[] {
+  const map = new Map<string, T>();
+  for (const it of a ?? []) map.set(key(it), it);
+  for (const it of b ?? []) {
+    const k = key(it);
+    const ex = map.get(k);
+    map.set(k, ex && prefer ? prefer(ex, it) : it);
+  }
+  return [...map.values()];
+}
+function uniq(a: string[] = [], b: string[] = []): string[] { return [...new Set([...a, ...b])]; }
+
+const STATUS_RANK: Record<string, number> = { active: 0, scheduled: 0, expired: 1, revoked: 2, consumed: 3 };
+
+/** Fusiona dos estados compartidos (uniones por id, prefiriendo lo "más avanzado"). */
+function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unknown> {
+  const tokens = unionBy(a.tokens ?? [], b.tokens ?? [], (t) => t.jti,
+    (x, y) => (STATUS_RANK[y.status] ?? 0) >= (STATUS_RANK[x.status] ?? 0) ? y : x);
+  const receipts = unionBy(a.receipts ?? [], b.receipts ?? [], (r) => r.receiptId,
+    (x, y) => (x.pendingSync && !y.pendingSync ? y : x));
+  const ledger = unionBy(a.ledger ?? [], b.ledger ?? [], (e) => e.hash).sort((x, y) => x.seq - y.seq);
+  const incidents = unionBy(a.incidents ?? [], b.incidents ?? [], (i) => i.id,
+    (x, y) => (y.status === "resolved" ? y : x));
+  const notifications = unionBy(a.notifications ?? [], b.notifications ?? [], (n) => n.id,
+    (x, y) => ({ ...y, readBy: uniq(x.readBy, y.readBy) }));
+  const conversations = unionBy(a.conversations ?? [], b.conversations ?? [], (c) => c.id,
+    (x, y) => (y.updatedAt >= x.updatedAt ? y : x));
+  const agenda = unionBy(a.agenda ?? [], b.agenda ?? [], (e) => e.id);
+  const customGuardians = unionBy(a.customGuardians ?? [], b.customGuardians ?? [], (g) => g.id,
+    (x, y) => (y.photo ? y : x)); // preferimos la versión que trae foto
+  const customGuardianships = unionBy(a.customGuardianships ?? [], b.customGuardianships ?? [],
+    (g) => `${g.guardianId}|${g.studentId}`);
+  return {
+    tokens, receipts, ledger, incidents, notifications, conversations, agenda,
+    customGuardians, customGuardianships,
+    revokedGuardians: uniq(a.revokedGuardians, b.revokedGuardians),
+    consumedJtis: uniq(a.consumedJtis, b.consumedJtis),
+    settings: { ...(a.settings ?? {}), ...(b.settings ?? {}) },
+  };
 }
 
 // Llave de institución FIJA (compartida por todos los dispositivos) para que
@@ -81,6 +125,7 @@ function freshState(): State {
     incidents: [],
     settings: { ttlSeconds: 300, clockSkewSeconds: 30, deviceOnline: true },
     consumedLocally: [],
+    consumedJtis: [],
     revokedGuardians: [],
     session: null,
     notifications: [
@@ -184,17 +229,14 @@ class Store {
 
   // --- Sync helpers ---
   private async initSync() {
+    // Fusiona lo local con lo remoto y siembra/actualiza la tabla (sin perder datos).
     const remote = await pullShared();
-    if (remote?.data) {
-      this.applyRemote(remote.data, remote.updated_at);
-    } else {
-      // Tabla vacía: este dispositivo siembra el estado compartido inicial.
-      const at = await pushShared(pickShared(this.state));
-      if (at) this.lastSyncedAt = at;
-    }
+    const merged = mergeShared(pickShared(this.state) as Partial<State>, (remote?.data ?? {}) as Partial<State>);
+    this.applyMerged(merged);
+    const at = await pushShared(merged);
+    if (at) this.lastSyncedAt = at;
     // Polling: detecta cambios hechos en otros dispositivos.
     setInterval(() => this.poll(), 3000);
-    // Al volver el foco, refresca enseguida.
     if (typeof window !== "undefined") {
       window.addEventListener("focus", () => this.poll());
     }
@@ -206,21 +248,22 @@ class Store {
     try {
       const remote = await pullShared();
       if (remote && remote.updated_at !== this.lastSyncedAt) {
-        this.applyRemote(remote.data, remote.updated_at);
+        const merged = mergeShared(pickShared(this.state) as Partial<State>, remote.data as Partial<State>);
+        this.applyMerged(merged);
+        this.lastSyncedAt = remote.updated_at;
       }
     } finally {
       this.pulling = false;
     }
   }
 
-  /** Aplica el estado compartido remoto preservando los campos locales. */
-  private applyRemote(data: Record<string, unknown>, updatedAt: string) {
+  /** Aplica el estado compartido fusionado preservando los campos locales. */
+  private applyMerged(data: Record<string, unknown>) {
     const shared: Partial<State> = {};
     for (const k of SHARED_KEYS) {
       if (k in data) (shared as Record<string, unknown>)[k] = data[k];
     }
     this.state = { ...this.state, ...shared };
-    this.lastSyncedAt = updatedAt;
     safeStorage.set(LS_KEY, JSON.stringify(this.state));
     this.listeners.forEach((l) => l());
   }
@@ -228,7 +271,11 @@ class Store {
   private schedulePush() {
     if (this.pushTimer) clearTimeout(this.pushTimer);
     this.pushTimer = setTimeout(async () => {
-      const at = await pushShared(pickShared(this.state));
+      // Antes de subir, fusionamos con lo último remoto para no pisar cambios ajenos.
+      const remote = await pullShared();
+      const merged = mergeShared((remote?.data ?? {}) as Partial<State>, pickShared(this.state) as Partial<State>);
+      this.applyMerged(merged);
+      const at = await pushShared(merged);
       if (at) this.lastSyncedAt = at;
     }, 600);
   }
@@ -348,10 +395,16 @@ class Store {
     const student = STUDENTS.find((s) => s.id === studentId);
     const who = this.guardianById(authorizedId);
     const target = famUser ? { audienceUser: famUser.username } : { audienceRole: "family" as const };
+    const now = new Date();
+    const fecha = now.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const hora = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    const modoTxt = mode === "online" ? "validación en línea"
+      : mode === "offline" ? "validación diferida (sin conexión)"
+      : "registro manual (contingencia)";
     this.pushNotification({
       ...target, kind: "pickup",
-      title: `✅ ${student?.name ?? "Tu hijo/a"} fue retirado/a`,
-      body: `Retiró ${who?.name ?? "un autorizado"} a las ${new Date().toLocaleTimeString()} (${mode}). Validado en la puerta.`,
+      title: `Retiro confirmado — ${student?.name ?? "su hijo/a"}`,
+      body: `Se registró el retiro de ${student?.name ?? "su hijo/a"} por ${who?.name ?? "la persona autorizada"} el ${fecha} a las ${hora} hs en el acceso del establecimiento (${modoTxt}).`,
     });
   }
 
@@ -532,6 +585,9 @@ class Store {
 
   /** Estado efectivo de un token, considerando TTL y programación. */
   effectiveStatus(t: AuthorizationToken): TokenStatus {
+    // Retiro confirmado en cualquier dispositivo (set compartido): aunque el
+    // token local siga "active", si su jti fue consumido, mostramos "consumed".
+    if (this.state.consumedJtis.includes(t.jti)) return "consumed";
     if (t.status !== "active") return t.status;
     const now = Date.now();
     if (now > t.claims.exp) return "expired";
@@ -615,6 +671,7 @@ class Store {
       this.commit({
         receipts: [receipt, ...this.state.receipts],
         consumedLocally: [...this.state.consumedLocally, claims.jti],
+        consumedJtis: [...this.state.consumedJtis, claims.jti],
       });
       this.setTokenStatus(claims.jti, "consumed");
       this.appendAudit("pickup_validated", receipt.receiptId, teacherId,
@@ -626,6 +683,7 @@ class Store {
       this.commit({
         receipts: [receipt, ...this.state.receipts],
         consumedLocally: [...this.state.consumedLocally, claims.jti],
+        consumedJtis: [...this.state.consumedJtis, claims.jti],
       });
     }
     return { ok: true, receipt };

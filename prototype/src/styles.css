@@ -199,6 +199,9 @@ button { font-size: 14px; }
 .idcard.big .avatar { font-size: 48px; }
 .idcard.big b { font-size: 17px; }
 .idcard.highlight { background: #eef2ff; border: 2px solid var(--brand); }
+.idcard.facial { flex-direction: column; text-align: center; }
+.idcard.facial .avatar-img { border: 3px solid var(--brand); box-shadow: 0 4px 14px rgba(79,70,229,.25); }
+.idcard.facial .avatar { font-size: 84px; }
 
 /* avisos */
 .aviso { padding: 10px 0; border-bottom: 1px solid var(--line); }

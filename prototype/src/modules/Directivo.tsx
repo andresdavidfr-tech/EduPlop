@@ -6,6 +6,7 @@ import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
+import { downloadReceipt } from "../lib/receipt";
 
 const VIEWS: SectionDef[] = [
   { key: "panel", label: "Panel", icon: "📊" },
@@ -210,7 +211,11 @@ export function Directivo() {
                   <td>{g?.emoji} {g?.name}</td>
                   <td><span className={`pill ${r.mode}`}>{r.mode}</span></td>
                   <td className="mono">{shortHash(r.payloadHash)}</td>
-                  <td><button className="link" onClick={() => store.openDispute(r.receiptId)}>Abrir disputa</button></td>
+                  <td>
+                    <button className="link" onClick={() => downloadReceipt(r)}>Descargar</button>
+                    {" · "}
+                    <button className="link" onClick={() => store.openDispute(r.receiptId)}>Abrir disputa</button>
+                  </td>
                 </tr>
               );
             })}

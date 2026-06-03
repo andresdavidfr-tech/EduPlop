@@ -8,6 +8,8 @@ import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
+import { downloadReceipt } from "../lib/receipt";
+import type { PickupReceipt, Guardian } from "../lib/types";
 
 const VIEWS: SectionDef[] = [
   { key: "puerta", label: "Puerta / Aula", icon: "🚪" },
@@ -27,6 +29,7 @@ export function Docentes() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanned, setScanned] = useState<string | null>(null); // payload escaneado → abre modal
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [confirmed, setConfirmed] = useState<{ receipt: PickupReceipt; actor?: Guardian; studentName?: string } | null>(null);
 
   const pending = state.receipts.filter((r) => r.pendingSync);
 
@@ -53,9 +56,11 @@ export function Docentes() {
     if (!scanned) return;
     const res = store.validatePickup(scanned, teacherId, true);
     if (res.ok) playSuccess(); else playError();
-    setToast(res.ok
-      ? { ok: true, msg: `✅ Entrega registrada (${res.receipt?.mode}). Se avisó a la familia.` }
-      : { ok: false, msg: res.reason ?? "Rechazado" });
+    if (res.ok && res.receipt) {
+      setConfirmed({ receipt: res.receipt, actor: authorized, studentName: student?.name });
+    } else {
+      setToast({ ok: false, msg: res.reason ?? "Rechazado" });
+    }
     setScanned(null);
   }
 
@@ -192,18 +197,21 @@ export function Docentes() {
           <div className={`modal ${verification.ok ? "ok" : "bad"}`} onClick={(e) => e.stopPropagation()}>
             {verification.ok ? (
               <>
-                <div className="modal-hero ok">✅ Pase válido</div>
-                <p className="modal-sub">Verificá que la persona coincida y entregá al alumno/a.</p>
+                <div className="modal-hero ok">Pase válido</div>
+                <p className="modal-sub">Control facial: compará el rostro con la persona presente y verificá los datos antes de entregar.</p>
                 <div className="idcards">
                   <div className="idcard big">
                     <div className="avatar">{student?.emoji ?? "❓"}</div>
                     <div><small>Alumno/a</small><b>{student?.name}</b><span className="mono">Doc. {student?.document}</span><span className="muted small">{student?.classroom}</span></div>
                   </div>
-                  <div className="idcard big highlight">
-                    <Avatar g={authorized} size={48} />
+                  <div className="idcard big highlight facial">
+                    <Avatar g={authorized} size={92} />
                     <div><small>Persona autorizada a retirar</small><b>{authorized?.name}</b><span className="mono">Doc. {authorized?.document}</span><span className="muted small">{authorized?.relation}</span></div>
                   </div>
                 </div>
+                {!authorized?.photo && (
+                  <p className="muted small" style={{ marginTop: 8 }}>⚠️ Sin foto registrada para esta persona: verificá la identidad con documento.</p>
+                )}
                 <div className="row gap" style={{ marginTop: 16 }}>
                   <button className="primary big" onClick={confirmar}>Confirmar entrega</button>
                   <button className="ghost" onClick={() => setScanned(null)}>Cancelar</button>
@@ -211,7 +219,7 @@ export function Docentes() {
               </>
             ) : (
               <>
-                <div className="modal-hero bad">⛔ Pase no válido</div>
+                <div className="modal-hero bad">Pase no válido</div>
                 <p className="modal-sub">{verification.reason}</p>
                 {claims && student && (
                   <p className="muted small">Correspondía a {student.emoji} {student.name}. Pedí a la familia un pase nuevo.</p>
@@ -219,6 +227,19 @@ export function Docentes() {
                 <button className="ghost" onClick={() => setScanned(null)} style={{ marginTop: 12 }}>Entendido</button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {confirmed && (
+        <div className="modal-overlay" onClick={() => setConfirmed(null)}>
+          <div className="modal ok" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-hero ok">Retiro registrado</div>
+            <p className="modal-sub">Se confirmó el retiro de <b>{confirmed.studentName ?? "el/la estudiante"}</b> y se notificó a la familia. Comprobante <span className="mono">{confirmed.receipt.receiptId}</span>.</p>
+            <div className="row gap" style={{ justifyContent: "center", marginTop: 16 }}>
+              <button className="primary" onClick={() => downloadReceipt(confirmed.receipt, confirmed.actor)}>📄 Descargar comprobante</button>
+              <button className="ghost" onClick={() => setConfirmed(null)}>Listo</button>
+            </div>
           </div>
         </div>
       )}
