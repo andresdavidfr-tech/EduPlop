@@ -277,7 +277,8 @@ function AddAuthorized({ studentId, onAdded }: { studentId: string; onAdded: (g:
               ? <img className="avatar-img" src={photo} style={{ width: 44, height: 44 }} alt="foto" />
               : <span className="avatar" style={{ fontSize: 36 }}>🧑</span>}
             <button className="ghost" onClick={() => fileRef.current?.click()}>Subir foto</button>
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
+            {/* sin "capture": en el celular permite elegir Cámara o Álbum */}
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
           </div>
         </div>
       </div>

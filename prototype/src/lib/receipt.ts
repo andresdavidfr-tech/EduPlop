@@ -21,7 +21,9 @@ const MODE_LABEL: Record<string, string> = {
 
 export function buildReceiptHtml(r: PickupReceipt, actorOverride?: Guardian): string {
   const stu = STUDENTS.find((s) => s.id === r.studentId);
-  const g = actorOverride ?? store.guardianById(r.authorizedId);
+  const local = store.guardianById(r.authorizedId);
+  const g = local ?? actorOverride;
+  const photo = local?.photo ?? actorOverride?.photo;
   const teacher = TEACHERS.find((t) => t.id === r.validatedBy);
   const teacherUser = USERS.find((u) => u.teacherId === r.validatedBy);
   const teacherName = teacher?.name ?? teacherUser?.name ?? r.validatedBy;
@@ -55,6 +57,9 @@ export function buildReceiptHtml(r: PickupReceipt, actorOverride?: Guardian): st
   .foot { margin-top: 22px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 11.5px; color: #64748b; line-height: 1.55; }
   .sign { display: flex; justify-content: space-between; gap: 24px; margin-top: 40px; }
   .sign div { flex: 1; border-top: 1px solid #94a3b8; padding-top: 6px; text-align: center; font-size: 12px; color: #64748b; }
+  .photo-box { margin-top: 24px; text-align: center; }
+  .photo-box img { width: 150px; height: 150px; object-fit: cover; border-radius: 12px; border: 2px solid #cbd5e1; }
+  .photo-box small { display: block; margin-top: 8px; font-size: 11.5px; color: #64748b; }
   @media print { body { background: #fff; padding: 0; } .doc { border: none; } }
 </style></head>
 <body><div class="doc">
@@ -85,6 +90,11 @@ export function buildReceiptHtml(r: PickupReceipt, actorOverride?: Guardian): st
     ${row("Firma del dispositivo (Ed25519)", `<span class="mono">${esc(r.deviceSignature)}</span>`)}
     ${r.serverSignature ? row("Co-firma de la institución (Ed25519)", `<span class="mono">${esc(r.serverSignature)}</span>`) : ""}
   </table>
+
+  ${photo ? `<div class="photo-box">
+    <img src="${esc(photo)}" alt="Foto de la persona autorizada" />
+    <small>Foto de la persona autorizada registrada por la familia (${esc(g?.name ?? "")})</small>
+  </div>` : ""}
 
   <div class="sign">
     <div>Firma del personal validante</div>

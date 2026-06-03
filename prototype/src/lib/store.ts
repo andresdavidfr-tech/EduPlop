@@ -242,6 +242,18 @@ class Store {
     }
   }
 
+  /** Fuerza una sincronización inmediata (p. ej. justo antes de validar un QR,
+   *  para traer la foto del autorizado recién cargada en otro dispositivo). */
+  async refresh() {
+    if (!SYNC_ENABLED) return;
+    const remote = await pullShared();
+    if (remote) {
+      const merged = mergeShared(pickShared(this.state) as Partial<State>, remote.data as Partial<State>);
+      this.applyMerged(merged);
+      this.lastSyncedAt = remote.updated_at;
+    }
+  }
+
   private async poll() {
     if (!SYNC_ENABLED || this.pulling) return;
     this.pulling = true;

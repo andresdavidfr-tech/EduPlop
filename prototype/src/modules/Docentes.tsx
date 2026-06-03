@@ -39,8 +39,9 @@ export function Docentes() {
   const student = claims && STUDENTS.find((s) => s.id === claims.sub);
   const authorized = claims ? store.resolveActor(claims) : undefined;
 
-  function handleScan(payload: string) {
+  async function handleScan(payload: string) {
     setScannerOpen(false);
+    await store.refresh(); // traer la última info (incluida la foto del autorizado) antes de validar
     const v = store.verifyLocally(payload);
     if (v.ok) playSuccess(); else playError();
     setScanned(payload); // abre el modal con el detalle
