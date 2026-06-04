@@ -26,11 +26,11 @@ export function App() {
 
   const allowed = (ROLE_MODULES[user.role] ?? []) as Tab[];
   return <Shell allowed={allowed} userName={user.name} userRole={ROLE_LABEL[user.role]}
-    pendingSync={state.receipts.filter((r) => r.pendingSync).length} />;
+    pendingSync={state.receipts.filter((r) => r.pendingSync).length} syncStatus={state.syncStatus} />;
 }
 
-function Shell({ allowed, userName, userRole, pendingSync }:
-  { allowed: Tab[]; userName: string; userRole: string; pendingSync: number }) {
+function Shell({ allowed, userName, userRole, pendingSync, syncStatus }:
+  { allowed: Tab[]; userName: string; userRole: string; pendingSync: number; syncStatus: string }) {
   const [tab, setTab] = useState<Tab>(allowed[0]);
   useEffect(() => { if (!allowed.includes(tab)) setTab(allowed[0]); }, [allowed.join()]);
 
@@ -73,10 +73,16 @@ function Shell({ allowed, userName, userRole, pendingSync }:
       </main>
 
       <footer className="foot">
+        {SYNC_ENABLED && (
+          <div className={`sync-pill ${syncStatus}`}>
+            {syncStatus === "ok" && <>☁️ Sincronización entre dispositivos activa</>}
+            {syncStatus === "connecting" && <>⏳ Conectando con la nube…</>}
+            {syncStatus === "error" && <>⚠️ Sin conexión con la nube (revisá la tabla/políticas en Supabase)</>}
+            {syncStatus === "off" && <>Sincronización desactivada</>}
+          </div>
+        )}
         Prototipo · firmas <b>Ed25519</b> reales + cadena de auditoría <b>SHA-256</b>.
-        {SYNC_ENABLED
-          ? <> Sincronización entre dispositivos <b>activa</b> ☁️ (Supabase).</>
-          : <><br />Demo de un dispositivo: la validación se refleja dentro de <b>este mismo navegador</b>; sincronizar entre teléfonos requeriría un backend compartido.</>}
+        {!SYNC_ENABLED && <><br />Demo de un dispositivo: la validación se refleja dentro de <b>este mismo navegador</b>.</>}
       </footer>
 
       <Assistant />

@@ -12,13 +12,19 @@ const ROW_ID = "shared";
 
 export { SYNC_ENABLED };
 
+// Las claves nuevas de Supabase (sb_publishable_…/sb_secret_…) NO son JWT:
+// para ellas el header Authorization no debe llevar el token (PostgREST lo
+// rechazaría). Las claves legacy (JWT, empiezan con "eyJ") sí van en Bearer.
+const IS_JWT = SUPABASE_ANON_KEY.startsWith("eyJ");
+
 function headers(extra: Record<string, string> = {}): Record<string, string> {
-  return {
+  const h: Record<string, string> = {
     apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     "Content-Type": "application/json",
     ...extra,
   };
+  if (IS_JWT) h.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
+  return h;
 }
 
 export interface SharedSnapshot {
@@ -26,25 +32,25 @@ export interface SharedSnapshot {
   updated_at: string;
 }
 
-/** Lee el estado compartido. Devuelve null si no existe o si hay error/red. */
-export async function pullShared(): Promise<SharedSnapshot | null> {
-  if (!SYNC_ENABLED) return null;
+/** Lee el estado compartido. ok=false indica problema de red/credenciales. */
+export async function pullShared(): Promise<{ ok: boolean; snapshot: SharedSnapshot | null }> {
+  if (!SYNC_ENABLED) return { ok: false, snapshot: null };
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${ROW_ID}&select=data,updated_at`,
       { headers: headers() }
     );
-    if (!res.ok) return null;
+    if (!res.ok) return { ok: false, snapshot: null };
     const rows = (await res.json()) as SharedSnapshot[];
-    return rows?.[0] ?? null;
+    return { ok: true, snapshot: rows?.[0] ?? null };
   } catch {
-    return null;
+    return { ok: false, snapshot: null };
   }
 }
 
-/** Escribe (upsert) el estado compartido. Devuelve el updated_at usado, o null. */
-export async function pushShared(data: Record<string, unknown>): Promise<string | null> {
-  if (!SYNC_ENABLED) return null;
+/** Escribe (upsert) el estado compartido. */
+export async function pushShared(data: Record<string, unknown>): Promise<{ ok: boolean; updated_at?: string }> {
+  if (!SYNC_ENABLED) return { ok: false };
   const updated_at = new Date().toISOString();
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
@@ -52,9 +58,9 @@ export async function pushShared(data: Record<string, unknown>): Promise<string 
       headers: headers({ Prefer: "resolution=merge-duplicates,return=minimal" }),
       body: JSON.stringify({ id: ROW_ID, data, updated_at }),
     });
-    if (!res.ok) return null;
-    return updated_at;
+    if (!res.ok) return { ok: false };
+    return { ok: true, updated_at };
   } catch {
-    return null;
+    return { ok: false };
   }
 }

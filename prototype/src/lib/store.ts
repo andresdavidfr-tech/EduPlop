@@ -30,6 +30,7 @@ interface State {
   notifPrefs: NotifPrefs;
   customGuardians: Guardian[]; // autorizados dados de alta por las familias
   customGuardianships: Guardianship[];
+  syncStatus: "off" | "connecting" | "ok" | "error"; // estado de la nube (local)
 }
 
 const LS_KEY = "eduplop-state-v3";
@@ -162,6 +163,7 @@ function freshState(): State {
     notifPrefs: { pickup: true, message: true, agenda: true, announcement: true },
     customGuardians: [],
     customGuardianships: [],
+    syncStatus: SYNC_ENABLED ? "connecting" : "off",
   };
 }
 
@@ -184,6 +186,7 @@ function hydrate(raw: string | null): State {
       // llave aleatoria persistida por versiones anteriores (si no, los pases
       // firmados entre dispositivos no se verificarían entre sí).
       institutionKey: base.institutionKey,
+      syncStatus: base.syncStatus, // estado en vivo, no el persistido
       settings: { ...base.settings, ...(saved.settings ?? {}) },
       notifPrefs: { ...base.notifPrefs, ...(saved.notifPrefs ?? {}) },
     };
@@ -228,13 +231,20 @@ class Store {
   }
 
   // --- Sync helpers ---
+  private setSyncStatus(s: State["syncStatus"]) {
+    if (this.state.syncStatus === s) return;
+    this.state = { ...this.state, syncStatus: s };
+    this.listeners.forEach((l) => l());
+  }
+
   private async initSync() {
     // Fusiona lo local con lo remoto y siembra/actualiza la tabla (sin perder datos).
-    const remote = await pullShared();
-    const merged = mergeShared(pickShared(this.state) as Partial<State>, (remote?.data ?? {}) as Partial<State>);
+    const { ok, snapshot } = await pullShared();
+    const merged = mergeShared(pickShared(this.state) as Partial<State>, (snapshot?.data ?? {}) as Partial<State>);
     this.applyMerged(merged);
-    const at = await pushShared(merged);
-    if (at) this.lastSyncedAt = at;
+    const push = await pushShared(merged);
+    if (push.ok && push.updated_at) this.lastSyncedAt = push.updated_at;
+    this.setSyncStatus(ok || push.ok ? "ok" : "error");
     // Polling: detecta cambios hechos en otros dispositivos.
     setInterval(() => this.poll(), 3000);
     if (typeof window !== "undefined") {
@@ -246,11 +256,12 @@ class Store {
    *  para traer la foto del autorizado recién cargada en otro dispositivo). */
   async refresh() {
     if (!SYNC_ENABLED) return;
-    const remote = await pullShared();
-    if (remote) {
-      const merged = mergeShared(pickShared(this.state) as Partial<State>, remote.data as Partial<State>);
+    const { ok, snapshot } = await pullShared();
+    this.setSyncStatus(ok ? "ok" : "error");
+    if (ok && snapshot && snapshot.updated_at !== this.lastSyncedAt) {
+      const merged = mergeShared(pickShared(this.state) as Partial<State>, snapshot.data as Partial<State>);
       this.applyMerged(merged);
-      this.lastSyncedAt = remote.updated_at;
+      this.lastSyncedAt = snapshot.updated_at;
     }
   }
 
@@ -258,11 +269,12 @@ class Store {
     if (!SYNC_ENABLED || this.pulling) return;
     this.pulling = true;
     try {
-      const remote = await pullShared();
-      if (remote && remote.updated_at !== this.lastSyncedAt) {
-        const merged = mergeShared(pickShared(this.state) as Partial<State>, remote.data as Partial<State>);
+      const { ok, snapshot } = await pullShared();
+      this.setSyncStatus(ok ? "ok" : "error");
+      if (ok && snapshot && snapshot.updated_at !== this.lastSyncedAt) {
+        const merged = mergeShared(pickShared(this.state) as Partial<State>, snapshot.data as Partial<State>);
         this.applyMerged(merged);
-        this.lastSyncedAt = remote.updated_at;
+        this.lastSyncedAt = snapshot.updated_at;
       }
     } finally {
       this.pulling = false;
@@ -284,11 +296,12 @@ class Store {
     if (this.pushTimer) clearTimeout(this.pushTimer);
     this.pushTimer = setTimeout(async () => {
       // Antes de subir, fusionamos con lo último remoto para no pisar cambios ajenos.
-      const remote = await pullShared();
-      const merged = mergeShared((remote?.data ?? {}) as Partial<State>, pickShared(this.state) as Partial<State>);
+      const { snapshot } = await pullShared();
+      const merged = mergeShared((snapshot?.data ?? {}) as Partial<State>, pickShared(this.state) as Partial<State>);
       this.applyMerged(merged);
-      const at = await pushShared(merged);
-      if (at) this.lastSyncedAt = at;
+      const push = await pushShared(merged);
+      if (push.ok && push.updated_at) this.lastSyncedAt = push.updated_at;
+      this.setSyncStatus(push.ok ? "ok" : "error");
     }, 600);
   }
 
