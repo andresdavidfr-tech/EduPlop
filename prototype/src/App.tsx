@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { store, useStore } from "./lib/store";
-import { Familias } from "./modules/Familias";
-import { Docentes } from "./modules/Docentes";
-import { Directivo } from "./modules/Directivo";
 import { Login } from "./modules/Login";
 import { NotificationsBell } from "./components/Notifications";
 import { Assistant } from "./components/Assistant";
 import { Logo } from "./components/Logo";
 import { INSTITUTION, ROLE_MODULES, ROLE_LABEL } from "./lib/seed";
 import { SYNC_ENABLED } from "./lib/supabaseConfig";
+
+// Carga diferida por rol: cada módulo (y sus dependencias pesadas, p. ej. el
+// escáner ZXing dentro de Docentes) se descarga solo cuando se usa.
+const Familias = lazy(() => import("./modules/Familias").then((m) => ({ default: m.Familias })));
+const Docentes = lazy(() => import("./modules/Docentes").then((m) => ({ default: m.Docentes })));
+const Directivo = lazy(() => import("./modules/Directivo").then((m) => ({ default: m.Directivo })));
 
 type Tab = "familias" | "docentes" | "directivo";
 
@@ -46,11 +49,12 @@ function Shell({ allowed, userName, userRole, pendingSync, syncStatus }:
         </div>
 
         {allowed.length > 1 && (
-          <nav className="tabs">
+          <nav className="tabs" aria-label="Módulos">
             {allowed.map((id) => (
-              <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => setTab(id)}>
-                <span>{TAB_META[id].icon}</span> {TAB_META[id].label}
-                {id === "docentes" && pendingSync > 0 && <em className="badge">{pendingSync}</em>}
+              <button key={id} className={tab === id ? "tab active" : "tab"} onClick={() => setTab(id)}
+                aria-current={tab === id ? "page" : undefined}>
+                <span aria-hidden="true">{TAB_META[id].icon}</span> {TAB_META[id].label}
+                {id === "docentes" && pendingSync > 0 && <em className="badge" aria-label={`${pendingSync} pendientes`}>{pendingSync}</em>}
               </button>
             ))}
           </nav>
@@ -67,9 +71,11 @@ function Shell({ allowed, userName, userRole, pendingSync, syncStatus }:
       </header>
 
       <main className="content">
-        {tab === "familias" && <Familias />}
-        {tab === "docentes" && <Docentes />}
-        {tab === "directivo" && <Directivo />}
+        <Suspense fallback={<div className="route-loading" role="status" aria-live="polite"><span className="spinner" aria-hidden="true" /> Cargando…</div>}>
+          {tab === "familias" && <Familias />}
+          {tab === "docentes" && <Docentes />}
+          {tab === "directivo" && <Directivo />}
+        </Suspense>
       </main>
 
       <footer className="foot">

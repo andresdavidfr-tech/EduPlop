@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import QRCode from "qrcode";
 import { store, useStore } from "../lib/store";
 import { STUDENTS, GUARDIANSHIPS, INSTITUTION } from "../lib/seed";
 import type { AuthorizationToken } from "../lib/types";
@@ -92,7 +91,11 @@ export function Familias() {
   }
 
   useEffect(() => {
-    if (last) QRCode.toDataURL(last.qrPayload, { width: 280, margin: 2, errorCorrectionLevel: "M" }).then(setQrUrl);
+    if (!last) return;
+    // Carga diferida de la librería de QR: no entra en el bundle inicial.
+    import("qrcode").then(({ default: QRCode }) =>
+      QRCode.toDataURL(last.qrPayload, { width: 280, margin: 2, errorCorrectionLevel: "M" }).then(setQrUrl)
+    );
   }, [last?.qrPayload]);
 
   const liveToken = last ? state.tokens.find((t) => t.jti === last.jti) ?? last : null;
@@ -130,15 +133,15 @@ export function Familias() {
         <h2>Autorizar un retiro</h2>
         <p className="muted">Generá un pase para que alguien retire a tu hijo/a. Mostrá el código en la puerta y listo. ✨</p>
 
-        <label>¿A quién vas a retirar?</label>
-        <select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
+        <label htmlFor="f-student">¿A quién vas a retirar?</label>
+        <select id="f-student" value={studentId} onChange={(e) => setStudentId(e.target.value)}>
           {myStudents.map((s) => (
             <option key={s.id} value={s.id}>{s.emoji} {s.name} · {s.classroom}</option>
           ))}
         </select>
 
-        <label>¿Quién lo/la va a retirar?</label>
-        <select value={authorizedId} onChange={(e) => setAuthorizedId(e.target.value)}>
+        <label htmlFor="f-authorized">¿Quién lo/la va a retirar?</label>
+        <select id="f-authorized" value={authorizedId} onChange={(e) => setAuthorizedId(e.target.value)}>
           {authorizeds.map((g) => (
             <option key={g.id} value={g.id}>{g.emoji} {g.name} · {g.relation}{store.isRevoked(g.id) ? " (revocado)" : ""}</option>
           ))}
@@ -150,20 +153,20 @@ export function Familias() {
           <AddAuthorized studentId={studentId} onAdded={(g) => { setAuthorizedId(g.id); setShowAdd(false); }} />
         )}
 
-        <label>¿Para cuándo?</label>
-        <div className="seg">
-          <button className={when === "now" ? "seg-btn active" : "seg-btn"} onClick={() => setWhen("now")}>Ahora</button>
-          <button className={when === "schedule" ? "seg-btn active" : "seg-btn"} onClick={() => setWhen("schedule")}>Programar día y hora</button>
+        <span className="field-label">¿Para cuándo?</span>
+        <div className="seg" role="group" aria-label="¿Para cuándo?">
+          <button className={when === "now" ? "seg-btn active" : "seg-btn"} aria-pressed={when === "now"} onClick={() => setWhen("now")}>Ahora</button>
+          <button className={when === "schedule" ? "seg-btn active" : "seg-btn"} aria-pressed={when === "schedule"} onClick={() => setWhen("schedule")}>Programar día y hora</button>
         </div>
         {when === "schedule" && (
           <div className="row gap wrap" style={{ marginTop: 8 }}>
-            <div className="grow"><label>Día</label><input type="date" value={date} min={defaultDate()} onChange={(e) => setDate(e.target.value)} /></div>
-            <div className="grow"><label>Hora</label><input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></div>
+            <div className="grow"><label htmlFor="f-date">Día</label><input id="f-date" type="date" value={date} min={defaultDate()} onChange={(e) => setDate(e.target.value)} /></div>
+            <div className="grow"><label htmlFor="f-time">Hora</label><input id="f-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} /></div>
           </div>
         )}
 
-        <label>Motivo (opcional)</label>
-        <input value={reason} onChange={(e) => setReason(e.target.value)} />
+        <label htmlFor="f-reason">Motivo (opcional)</label>
+        <input id="f-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
 
         {when === "now"
           ? <div className="ttl-note">🕒 El pase quedará activo por <b>{ttlMin} min</b>, tiempo de sobra para llegar a la puerta.</div>

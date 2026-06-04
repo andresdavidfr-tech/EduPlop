@@ -55,7 +55,7 @@ body {
 .card h2 { margin: 0 0 6px; font-size: 17px; }
 
 /* form */
-label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+label, .field-label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
 label.mt { margin-top: 18px; }
 select, input[type="text"], input:not([type]) {
   width: 100%; padding: 10px 12px; border: 1px solid var(--line);
@@ -367,6 +367,31 @@ button:not(:disabled):active { transform: translateY(0) scale(.96); }
 .sync-pill.connecting { background: #eff6ff; color: #1e40af; }
 .sync-pill.error { background: #fef2f2; color: #b91c1c; }
 .sync-pill.off { background: var(--soft); color: var(--muted); }
+
+/* ===================== ACCESIBILIDAD Y CARGA ===================== */
+/* Foco visible para navegación por teclado (WCAG 2.4.7) */
+:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 2px; border-radius: 6px; }
+:focus:not(:focus-visible) { outline: none; }
+
+/* Spinner y estados de carga de carga diferida */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  display: inline-block; width: 16px; height: 16px; vertical-align: -3px;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.route-loading { display: flex; align-items: center; gap: 10px; justify-content: center; padding: 60px 0; color: var(--muted); font-weight: 600; }
+
+/* Reservar altura del indicador de sync para evitar saltos (CLS) */
+.sync-pill { min-height: 28px; }
+
+/* Texto secundario chico con contraste suficiente (AA) */
+.muted.small, .small.muted { color: #475569; }
+
+/* Áreas táctiles cómodas en móvil */
+@media (max-width: 820px) {
+  button, .tab, .sec-btn, .rsvp-btn, .cal-link, .link { min-height: 40px; }
+}
 
 /* Respeta la preferencia de menos movimiento */
 @media (prefers-reduced-motion: reduce) {

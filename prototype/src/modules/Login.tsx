@@ -29,11 +29,13 @@ export function Login() {
         </div>
 
         <form onSubmit={submit}>
-          <label>Usuario</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ej. familia" autoFocus />
-          <label>Contraseña</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-          {error && <div className="login-error">{error}</div>}
+          <label htmlFor="login-user">Usuario</label>
+          <input id="login-user" name="username" autoComplete="username" value={username}
+            onChange={(e) => setUsername(e.target.value)} placeholder="ej. familia" autoFocus />
+          <label htmlFor="login-pass">Contraseña</label>
+          <input id="login-pass" name="password" type="password" autoComplete="current-password" value={password}
+            onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+          {error && <div className="login-error" role="alert">{error}</div>}
           <button className="primary big" type="submit">Ingresar</button>
         </form>
 

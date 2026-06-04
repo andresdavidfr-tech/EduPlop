@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, lazy, Suspense } from "react";
 import { store, useStore } from "../lib/store";
 import { STUDENTS, TEACHERS } from "../lib/seed";
-import { QrScanner } from "../components/QrScanner";
+// El escáner arrastra ZXing (pesado): se carga solo al abrirlo.
+const QrScanner = lazy(() => import("../components/QrScanner").then((m) => ({ default: m.QrScanner })));
 import { Avatar } from "../components/Avatar";
 import { playSuccess, playError } from "../lib/sound";
 import { Messages } from "../components/Messages";
@@ -190,11 +191,14 @@ export function Docentes() {
       {view === "mensajes" && <Messages />}
 
       {scannerOpen && (
-        <QrScanner onResult={handleScan} onClose={() => setScannerOpen(false)} onSimulate={simulate} />
+        <Suspense fallback={<div className="scanner-overlay" role="status" aria-live="polite"><div className="scanner"><span className="spinner" aria-hidden="true" /> Abriendo cámara…</div></div>}>
+          <QrScanner onResult={handleScan} onClose={() => setScannerOpen(false)} onSimulate={simulate} />
+        </Suspense>
       )}
 
       {scanned && verification && (
-        <div className="modal-overlay" onClick={() => setScanned(null)}>
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={verification.ok ? "Pase válido" : "Pase no válido"}
+          onClick={() => setScanned(null)} onKeyDown={(e) => { if (e.key === "Escape") setScanned(null); }}>
           <div className={`modal ${verification.ok ? "ok" : "bad"}`} onClick={(e) => e.stopPropagation()}>
             {verification.ok ? (
               <>
@@ -233,7 +237,8 @@ export function Docentes() {
       )}
 
       {confirmed && (
-        <div className="modal-overlay" onClick={() => setConfirmed(null)}>
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Retiro registrado"
+          onClick={() => setConfirmed(null)} onKeyDown={(e) => { if (e.key === "Escape") setConfirmed(null); }}>
           <div className="modal ok" onClick={(e) => e.stopPropagation()}>
             <div className="modal-hero ok">Retiro registrado</div>
             <p className="modal-sub">Se confirmó el retiro de <b>{confirmed.studentName ?? "el/la estudiante"}</b> y se notificó a la familia. Comprobante <span className="mono">{confirmed.receipt.receiptId}</span>.</p>

@@ -267,6 +267,9 @@ class Store {
 
   private async poll() {
     if (!SYNC_ENABLED || this.pulling) return;
+    // No sondear si la pestaña está oculta (ahorra red/batería); al volver el
+    // foco, el listener de "focus" dispara una sincronización inmediata.
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
     this.pulling = true;
     try {
       const { ok, snapshot } = await pullShared();
