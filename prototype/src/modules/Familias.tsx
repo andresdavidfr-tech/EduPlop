@@ -10,11 +10,11 @@ import { compressImage } from "../lib/image";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 
 const VIEWS: SectionDef[] = [
+  { key: "mensajes", label: "Mensajes", icon: "💬" },
+  { key: "agenda", label: "Agenda", icon: "📅" },
+  { key: "notif", label: "Notificaciones", icon: "🔔" },
   { key: "retiro", label: "Autorizar retiro", icon: "🎫" },
   { key: "historial", label: "Mis retiros", icon: "📋" },
-  { key: "agenda", label: "Agenda", icon: "📅" },
-  { key: "mensajes", label: "Mensajes", icon: "💬" },
-  { key: "notif", label: "Notificaciones", icon: "🔔" },
 ];
 
 function statusLabel(s: string) {
@@ -42,7 +42,7 @@ function defaultTime() {
 export function Familias() {
   const state = useStore();
   const user = store.currentUser();
-  const [view, setView] = useState("retiro");
+  const [view, setView] = useState("mensajes");
 
   const myStudents = useMemo(() => {
     if (user?.role === "family" && user.guardianId) {

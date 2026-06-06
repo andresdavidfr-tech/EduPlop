@@ -9,13 +9,13 @@ import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { downloadReceipt } from "../lib/receipt";
 
 const VIEWS: SectionDef[] = [
-  { key: "panel", label: "Panel", icon: "📊" },
-  { key: "comunicado", label: "Comunicado", icon: "📣" },
-  { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "mensajes", label: "Mensajes", icon: "💬" },
-  { key: "seguridad", label: "Seguridad", icon: "🔐" },
+  { key: "agenda", label: "Agenda", icon: "📅" },
+  { key: "comunicado", label: "Comunicado", icon: "📣" },
+  { key: "panel", label: "Panel", icon: "📊" },
   { key: "autorizados", label: "Autorizados", icon: "👥" },
   { key: "incidentes", label: "Incidentes", icon: "⚠️" },
+  { key: "seguridad", label: "Seguridad", icon: "🔐" },
   { key: "registros", label: "Auditoría", icon: "📜" },
 ];
 
@@ -35,7 +35,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export function Directivo() {
   const state = useStore();
-  const [view, setView] = useState("panel");
+  const [view, setView] = useState("mensajes");
   const [chain, setChain] = useState<{ valid: boolean; brokenAt?: number; checked: number } | null>(null);
 
   const validated = state.receipts.filter((r) => !r.pendingSync).length;
