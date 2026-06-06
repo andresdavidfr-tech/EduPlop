@@ -29,11 +29,12 @@ export function App() {
 
   const allowed = (ROLE_MODULES[user.role] ?? []) as Tab[];
   return <Shell allowed={allowed} userName={user.name} userRole={ROLE_LABEL[user.role]}
-    pendingSync={state.receipts.filter((r) => r.pendingSync).length} syncStatus={state.syncStatus} />;
+    pendingSync={state.receipts.filter((r) => r.pendingSync).length}
+    syncStatus={state.syncStatus} syncDetail={state.syncDetail} />;
 }
 
-function Shell({ allowed, userName, userRole, pendingSync, syncStatus }:
-  { allowed: Tab[]; userName: string; userRole: string; pendingSync: number; syncStatus: string }) {
+function Shell({ allowed, userName, userRole, pendingSync, syncStatus, syncDetail }:
+  { allowed: Tab[]; userName: string; userRole: string; pendingSync: number; syncStatus: string; syncDetail: string }) {
   const [tab, setTab] = useState<Tab>(allowed[0]);
   useEffect(() => { if (!allowed.includes(tab)) setTab(allowed[0]); }, [allowed.join()]);
 
@@ -83,7 +84,7 @@ function Shell({ allowed, userName, userRole, pendingSync, syncStatus }:
           <div className={`sync-pill ${syncStatus}`}>
             {syncStatus === "ok" && <>☁️ Sincronización entre dispositivos activa</>}
             {syncStatus === "connecting" && <>⏳ Conectando con la nube…</>}
-            {syncStatus === "error" && <>⚠️ Sin conexión con la nube (revisá la tabla/políticas en Supabase)</>}
+            {syncStatus === "error" && <>⚠️ Sin conexión con la nube {syncDetail} — revisá la tabla/políticas en Supabase</>}
             {syncStatus === "off" && <>Sincronización desactivada</>}
           </div>
         )}

@@ -31,6 +31,7 @@ interface State {
   customGuardians: Guardian[]; // autorizados dados de alta por las familias
   customGuardianships: Guardianship[];
   syncStatus: "off" | "connecting" | "ok" | "error"; // estado de la nube (local)
+  syncDetail: string; // detalle del error de sync (local)
 }
 
 const LS_KEY = "eduplop-state-v3";
@@ -164,6 +165,7 @@ function freshState(): State {
     customGuardians: [],
     customGuardianships: [],
     syncStatus: SYNC_ENABLED ? "connecting" : "off",
+    syncDetail: "",
   };
 }
 
@@ -187,6 +189,7 @@ function hydrate(raw: string | null): State {
       // firmados entre dispositivos no se verificarían entre sí).
       institutionKey: base.institutionKey,
       syncStatus: base.syncStatus, // estado en vivo, no el persistido
+      syncDetail: "",
       settings: { ...base.settings, ...(saved.settings ?? {}) },
       notifPrefs: { ...base.notifPrefs, ...(saved.notifPrefs ?? {}) },
     };
@@ -231,20 +234,24 @@ class Store {
   }
 
   // --- Sync helpers ---
-  private setSyncStatus(s: State["syncStatus"]) {
-    if (this.state.syncStatus === s) return;
-    this.state = { ...this.state, syncStatus: s };
+  private setSyncStatus(s: State["syncStatus"], detail = "") {
+    if (this.state.syncStatus === s && this.state.syncDetail === detail) return;
+    this.state = { ...this.state, syncStatus: s, syncDetail: detail };
     this.listeners.forEach((l) => l());
+  }
+  private errDetail(status: number) {
+    return status ? `(HTTP ${status})` : "(sin red / CORS)";
   }
 
   private async initSync() {
     // Fusiona lo local con lo remoto y siembra/actualiza la tabla (sin perder datos).
-    const { ok, snapshot } = await pullShared();
+    const { ok, snapshot, status } = await pullShared();
     const merged = mergeShared(pickShared(this.state) as Partial<State>, (snapshot?.data ?? {}) as Partial<State>);
     this.applyMerged(merged);
     const push = await pushShared(merged);
     if (push.ok && push.updated_at) this.lastSyncedAt = push.updated_at;
-    this.setSyncStatus(ok || push.ok ? "ok" : "error");
+    if (ok || push.ok) this.setSyncStatus("ok");
+    else this.setSyncStatus("error", this.errDetail(status || push.status));
     // Polling: detecta cambios hechos en otros dispositivos.
     setInterval(() => this.poll(), 3000);
     if (typeof window !== "undefined") {
@@ -256,8 +263,8 @@ class Store {
    *  para traer la foto del autorizado recién cargada en otro dispositivo). */
   async refresh() {
     if (!SYNC_ENABLED) return;
-    const { ok, snapshot } = await pullShared();
-    this.setSyncStatus(ok ? "ok" : "error");
+    const { ok, snapshot, status } = await pullShared();
+    this.setSyncStatus(ok ? "ok" : "error", ok ? "" : this.errDetail(status));
     if (ok && snapshot && snapshot.updated_at !== this.lastSyncedAt) {
       const merged = mergeShared(pickShared(this.state) as Partial<State>, snapshot.data as Partial<State>);
       this.applyMerged(merged);
@@ -272,8 +279,8 @@ class Store {
     if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
     this.pulling = true;
     try {
-      const { ok, snapshot } = await pullShared();
-      this.setSyncStatus(ok ? "ok" : "error");
+      const { ok, snapshot, status } = await pullShared();
+      this.setSyncStatus(ok ? "ok" : "error", ok ? "" : this.errDetail(status));
       if (ok && snapshot && snapshot.updated_at !== this.lastSyncedAt) {
         const merged = mergeShared(pickShared(this.state) as Partial<State>, snapshot.data as Partial<State>);
         this.applyMerged(merged);

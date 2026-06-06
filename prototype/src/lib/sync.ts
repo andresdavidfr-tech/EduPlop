@@ -33,24 +33,24 @@ export interface SharedSnapshot {
 }
 
 /** Lee el estado compartido. ok=false indica problema de red/credenciales. */
-export async function pullShared(): Promise<{ ok: boolean; snapshot: SharedSnapshot | null }> {
-  if (!SYNC_ENABLED) return { ok: false, snapshot: null };
+export async function pullShared(): Promise<{ ok: boolean; snapshot: SharedSnapshot | null; status: number }> {
+  if (!SYNC_ENABLED) return { ok: false, snapshot: null, status: 0 };
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${ROW_ID}&select=data,updated_at`,
       { headers: headers() }
     );
-    if (!res.ok) return { ok: false, snapshot: null };
+    if (!res.ok) return { ok: false, snapshot: null, status: res.status };
     const rows = (await res.json()) as SharedSnapshot[];
-    return { ok: true, snapshot: rows?.[0] ?? null };
+    return { ok: true, snapshot: rows?.[0] ?? null, status: res.status };
   } catch {
-    return { ok: false, snapshot: null };
+    return { ok: false, snapshot: null, status: 0 };
   }
 }
 
 /** Escribe (upsert) el estado compartido. */
-export async function pushShared(data: Record<string, unknown>): Promise<{ ok: boolean; updated_at?: string }> {
-  if (!SYNC_ENABLED) return { ok: false };
+export async function pushShared(data: Record<string, unknown>): Promise<{ ok: boolean; updated_at?: string; status: number }> {
+  if (!SYNC_ENABLED) return { ok: false, status: 0 };
   const updated_at = new Date().toISOString();
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
@@ -58,9 +58,9 @@ export async function pushShared(data: Record<string, unknown>): Promise<{ ok: b
       headers: headers({ Prefer: "resolution=merge-duplicates,return=minimal" }),
       body: JSON.stringify({ id: ROW_ID, data, updated_at }),
     });
-    if (!res.ok) return { ok: false };
-    return { ok: true, updated_at };
+    if (!res.ok) return { ok: false, status: res.status };
+    return { ok: true, updated_at, status: res.status };
   } catch {
-    return { ok: false };
+    return { ok: false, status: 0 };
   }
 }
