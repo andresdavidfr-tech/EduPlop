@@ -74,19 +74,19 @@ export function Directivo() {
         <p className="muted small">Comunicate con las familias o el equipo docente. Les llega como notificación.</p>
         <div className="row gap wrap">
           <div>
-            <label>Para</label>
-            <select value={audience} onChange={(e) => setAudience(e.target.value as any)}>
+            <label htmlFor="com-aud">Para</label>
+            <select id="com-aud" value={audience} onChange={(e) => setAudience(e.target.value as any)}>
               <option value="family">👨‍👩‍👧 Familias</option>
               <option value="teacher">🧑‍🏫 Docentes</option>
             </select>
           </div>
           <div className="grow">
-            <label>Título</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Acto del 9 de Julio" />
+            <label htmlFor="com-title">Título</label>
+            <input id="com-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Acto del 9 de Julio" />
           </div>
         </div>
-        <label>Mensaje</label>
-        <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escribí el aviso…" />
+        <label htmlFor="com-body">Mensaje</label>
+        <input id="com-body" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escribí el aviso…" />
         <div className="row gap" style={{ marginTop: 12 }}>
           <button className="primary" onClick={enviar}>Enviar comunicado</button>
           {sent && <span className="pill active">✓ Enviado</span>}

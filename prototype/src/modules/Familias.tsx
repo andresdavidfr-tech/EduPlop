@@ -268,13 +268,13 @@ function AddAuthorized({ studentId, onAdded }: { studentId: string; onAdded: (g:
     <div className="event-form">
       <p className="muted small">Registrá una persona autorizada a retirar (queda asociada a este alumno/a).</p>
       <div className="row gap wrap">
-        <div className="grow"><label>Nombre completo *</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Ana Gómez" /></div>
-        <div className="grow"><label>DNI *</label><input value={document} onChange={(e) => setDocument(e.target.value)} placeholder="Ej. 35.111.222" /></div>
+        <div className="grow"><label htmlFor="aa-name">Nombre completo *</label><input id="aa-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Ana Gómez" /></div>
+        <div className="grow"><label htmlFor="aa-doc">DNI *</label><input id="aa-doc" value={document} onChange={(e) => setDocument(e.target.value)} placeholder="Ej. 35.111.222" /></div>
       </div>
       <div className="row gap wrap">
-        <div className="grow"><label>Vínculo</label><input value={relation} onChange={(e) => setRelation(e.target.value)} placeholder="Ej. Tía, Niñera, Abuelo" /></div>
+        <div className="grow"><label htmlFor="aa-rel">Vínculo</label><input id="aa-rel" value={relation} onChange={(e) => setRelation(e.target.value)} placeholder="Ej. Tía, Niñera, Abuelo" /></div>
         <div className="grow">
-          <label>Foto (opcional)</label>
+          <span className="field-label">Foto (opcional)</span>
           <div className="row gap">
             {photo
               ? <img className="avatar-img" src={photo} style={{ width: 44, height: 44 }} alt="foto" />

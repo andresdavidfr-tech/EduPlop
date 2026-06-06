@@ -10,6 +10,7 @@ import { Agenda } from "../components/Agenda";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 import { downloadReceipt } from "../lib/receipt";
+import { Modal } from "../ui/Modal";
 import type { PickupReceipt, Guardian } from "../lib/types";
 
 const VIEWS: SectionDef[] = [
@@ -197,9 +198,8 @@ export function Docentes() {
       )}
 
       {scanned && verification && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={verification.ok ? "Pase válido" : "Pase no válido"}
-          onClick={() => setScanned(null)} onKeyDown={(e) => { if (e.key === "Escape") setScanned(null); }}>
-          <div className={`modal ${verification.ok ? "ok" : "bad"}`} onClick={(e) => e.stopPropagation()}>
+        <Modal label={verification.ok ? "Pase válido" : "Pase no válido"}
+          className={verification.ok ? "ok" : "bad"} onClose={() => setScanned(null)}>
             {verification.ok ? (
               <>
                 <div className="modal-hero ok">Pase válido</div>
@@ -232,22 +232,18 @@ export function Docentes() {
                 <button className="ghost" onClick={() => setScanned(null)} style={{ marginTop: 12 }}>Entendido</button>
               </>
             )}
-          </div>
-        </div>
+        </Modal>
       )}
 
       {confirmed && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Retiro registrado"
-          onClick={() => setConfirmed(null)} onKeyDown={(e) => { if (e.key === "Escape") setConfirmed(null); }}>
-          <div className="modal ok" onClick={(e) => e.stopPropagation()}>
+        <Modal label="Retiro registrado" className="ok" onClose={() => setConfirmed(null)}>
             <div className="modal-hero ok">Retiro registrado</div>
             <p className="modal-sub">Se confirmó el retiro de <b>{confirmed.studentName ?? "el/la estudiante"}</b> y se notificó a la familia. Comprobante <span className="mono">{confirmed.receipt.receiptId}</span>.</p>
             <div className="row gap" style={{ justifyContent: "center", marginTop: 16 }}>
               <button className="primary" onClick={() => downloadReceipt(confirmed.receipt, confirmed.actor)}>📄 Descargar comprobante</button>
               <button className="ghost" onClick={() => setConfirmed(null)}>Listo</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

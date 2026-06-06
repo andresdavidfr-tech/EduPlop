@@ -2,6 +2,7 @@ import { useState } from "react";
 import { store } from "../lib/store";
 import { USERS, ROLE_LABEL } from "../lib/seed";
 import { Logo } from "../components/Logo";
+import { Button } from "../ui/Button";
 
 export function Login() {
   const [username, setUsername] = useState("");
@@ -36,7 +37,7 @@ export function Login() {
           <input id="login-pass" name="password" type="password" autoComplete="current-password" value={password}
             onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           {error && <div className="login-error" role="alert">{error}</div>}
-          <button className="primary big" type="submit">Ingresar</button>
+          <Button variant="primary" big type="submit">Ingresar</Button>
         </form>
 
         <div className="login-demo">

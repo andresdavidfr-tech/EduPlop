@@ -115,31 +115,32 @@ function EventForm({ onDone, event }: { onDone: () => void; event?: AgendaEvent 
     onDone();
   }
 
+  const uid = event?.id ?? "new";
   return (
     <div className="event-form">
       <div className="row gap wrap">
-        <div className="grow"><label>Título</label><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Reunión de padres" /></div>
-        <div><label>Fecha</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-        <div><label>Hora</label><input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></div>
+        <div className="grow"><label htmlFor={`ev-title-${uid}`}>Título</label><input id={`ev-title-${uid}`} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Reunión de padres" /></div>
+        <div><label htmlFor={`ev-date-${uid}`}>Fecha</label><input id={`ev-date-${uid}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div><label htmlFor={`ev-time-${uid}`}>Hora</label><input id={`ev-time-${uid}`} type="time" value={time} onChange={(e) => setTime(e.target.value)} /></div>
       </div>
       <div className="row gap wrap">
-        <div><label>Tipo</label>
-          <select value={type} onChange={(e) => setType(e.target.value as AgendaType)}>
+        <div><label htmlFor={`ev-type-${uid}`}>Tipo</label>
+          <select id={`ev-type-${uid}`} value={type} onChange={(e) => setType(e.target.value as AgendaType)}>
             {Object.entries(TYPE_META).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
           </select>
         </div>
-        <div><label>Para</label>
-          <select value={audienceRole} onChange={(e) => setAudienceRole(e.target.value as "family" | "teacher" | "all")}>
+        <div><label htmlFor={`ev-aud-${uid}`}>Para</label>
+          <select id={`ev-aud-${uid}`} value={audienceRole} onChange={(e) => setAudienceRole(e.target.value as "family" | "teacher" | "all")}>
             <option value="family">Familias</option>
             <option value="teacher">Docentes</option>
             <option value="all">Todos</option>
           </select>
         </div>
-        <div className="grow"><label>Descripción</label><input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalle del evento" /></div>
+        <div className="grow"><label htmlFor={`ev-desc-${uid}`}>Descripción</label><input id={`ev-desc-${uid}`} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalle del evento" /></div>
       </div>
       <div className="row gap wrap">
-        <div className="grow"><label>Ubicación (opcional · se abre en Google Maps)</label>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ej. SUM del colegio, Av. San Martín 1234" />
+        <div className="grow"><label htmlFor={`ev-loc-${uid}`}>Ubicación (opcional · se abre en Google Maps)</label>
+          <input id={`ev-loc-${uid}`} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ej. SUM del colegio, Av. San Martín 1234" />
         </div>
       </div>
       <div className="row gap" style={{ marginTop: 12 }}>
