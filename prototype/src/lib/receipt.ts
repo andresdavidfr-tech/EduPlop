@@ -19,11 +19,11 @@ const MODE_LABEL: Record<string, string> = {
   manual: "Manual — contingencia (sin QR)",
 };
 
-export function buildReceiptHtml(r: PickupReceipt, actorOverride?: Guardian): string {
+export function buildReceiptHtml(r: PickupReceipt, actorOverride?: Guardian, photoSrc?: string): string {
   const stu = STUDENTS.find((s) => s.id === r.studentId);
   const local = store.guardianById(r.authorizedId);
   const g = local ?? actorOverride;
-  const photo = local?.photo ?? actorOverride?.photo;
+  const photo = photoSrc ?? local?.photo ?? actorOverride?.photo;
   const teacher = TEACHERS.find((t) => t.id === r.validatedBy);
   const teacherUser = USERS.find((u) => u.teacherId === r.validatedBy);
   const teacherName = teacher?.name ?? teacherUser?.name ?? r.validatedBy;
@@ -107,8 +107,26 @@ export function buildReceiptHtml(r: PickupReceipt, actorOverride?: Guardian): st
 </div></body></html>`;
 }
 
-export function downloadReceipt(r: PickupReceipt, actorOverride?: Guardian): void {
-  const html = buildReceiptHtml(r, actorOverride);
+async function urlToDataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result as string);
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+}
+
+export async function downloadReceipt(r: PickupReceipt, actorOverride?: Guardian): Promise<void> {
+  // Si la foto es una URL (Storage), la incrustamos para que el comprobante
+  // quede autocontenido y nítido (funciona incluso sin conexión al abrirlo).
+  const g = store.guardianById(r.authorizedId) ?? actorOverride;
+  let photoSrc = g?.photo;
+  if (photoSrc && /^https?:/.test(photoSrc)) {
+    try { photoSrc = await urlToDataUrl(photoSrc); } catch { /* deja la URL como fallback */ }
+  }
+  const html = buildReceiptHtml(r, actorOverride, photoSrc);
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

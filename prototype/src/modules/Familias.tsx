@@ -6,7 +6,8 @@ import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
-import { compressImage } from "../lib/image";
+import { compressImage, compressToBlob, fileToDataUrl } from "../lib/image";
+import { uploadPhoto } from "../lib/storage";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 
 const VIEWS: SectionDef[] = [
@@ -243,19 +244,28 @@ function AddAuthorized({ studentId, onAdded }: { studentId: string; onAdded: (g:
   const [document, setDocument] = useState("");
   const [relation, setRelation] = useState("");
   const [photo, setPhoto] = useState<string | undefined>();
+  const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      if (typeof reader.result !== "string") return;
-      // Miniatura comprimida: así viaja dentro del QR y ocupa poco.
-      const thumb = await compressImage(reader.result, 56, 0.5);
-      setPhoto(thumb);
-    };
-    reader.readAsDataURL(f);
+    setUploading(true);
+    try {
+      const dataUrl = await fileToDataUrl(f);
+      // Con nube: subimos una imagen de buena calidad a Storage y guardamos la URL.
+      if (SYNC_ENABLED) {
+        const blob = await compressToBlob(dataUrl, 512, 0.82);
+        if (blob) {
+          const url = await uploadPhoto(blob, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`);
+          if (url) { setPhoto(url); return; }
+        }
+      }
+      // Fallback (sin nube o si falló la subida): miniatura mediana en base64.
+      setPhoto(await compressImage(dataUrl, 220, 0.7));
+    } finally {
+      setUploading(false);
+    }
   }
 
   function save() {
@@ -279,7 +289,9 @@ function AddAuthorized({ studentId, onAdded }: { studentId: string; onAdded: (g:
             {photo
               ? <img className="avatar-img" src={photo} style={{ width: 44, height: 44 }} alt="foto" />
               : <span className="avatar" style={{ fontSize: 36 }}>🧑</span>}
-            <button className="ghost" onClick={() => fileRef.current?.click()}>Subir foto</button>
+            <button className="ghost" onClick={() => fileRef.current?.click()} disabled={uploading} aria-busy={uploading}>
+              {uploading ? <><span className="spinner" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }} />Subiendo…</> : (photo ? "Cambiar foto" : "Subir foto")}
+            </button>
             {/* sin "capture": en el celular permite elegir Cámara o Álbum */}
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
           </div>
