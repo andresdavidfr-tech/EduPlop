@@ -6,9 +6,9 @@ import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
   Settings, AuditEventType, TokenStatus, Notification, User,
   Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
-  Guardian, Guardianship,
+  Guardian, Guardianship, Sala, Turno,
 } from "./types";
-import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS } from "./seed";
+import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS } from "./seed";
 import { SYNC_ENABLED, pullShared, pushShared } from "./sync";
 
 interface State {
@@ -30,6 +30,10 @@ interface State {
   notifPrefs: NotifPrefs;
   customGuardians: Guardian[]; // autorizados dados de alta por las familias
   customGuardianships: Guardianship[];
+  // --- Administración del establecimiento (editable por Dirección) ---
+  salas: Sala[];
+  studentSala: Record<string, string>; // studentId → salaId
+  teacherTasks: Record<string, string>; // teacherId → tareas
   syncStatus: "off" | "connecting" | "ok" | "error"; // estado de la nube (local)
   syncDetail: string; // detalle del error de sync (local)
 }
@@ -41,7 +45,7 @@ const LS_KEY = "eduplop-state-v3";
 const SHARED_KEYS: (keyof State)[] = [
   "tokens", "receipts", "ledger", "incidents", "settings", "revokedGuardians",
   "consumedJtis", "notifications", "conversations", "agenda", "customGuardians",
-  "customGuardianships",
+  "customGuardianships", "salas", "studentSala", "teacherTasks",
 ];
 
 function pickShared(s: State): Record<string, unknown> {
@@ -83,12 +87,15 @@ function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unkno
     (x, y) => (y.photo ? y : x)); // preferimos la versión que trae foto
   const customGuardianships = unionBy(a.customGuardianships ?? [], b.customGuardianships ?? [],
     (g) => `${g.guardianId}|${g.studentId}`);
+  const salas = unionBy(a.salas ?? [], b.salas ?? [], (s) => s.id);
   return {
     tokens, receipts, ledger, incidents, notifications, conversations, agenda,
-    customGuardians, customGuardianships,
+    customGuardians, customGuardianships, salas,
     revokedGuardians: uniq(a.revokedGuardians, b.revokedGuardians),
     consumedJtis: uniq(a.consumedJtis, b.consumedJtis),
     settings: { ...(a.settings ?? {}), ...(b.settings ?? {}) },
+    studentSala: { ...(a.studentSala ?? {}), ...(b.studentSala ?? {}) },
+    teacherTasks: { ...(a.teacherTasks ?? {}), ...(b.teacherTasks ?? {}) },
   };
 }
 
@@ -164,6 +171,9 @@ function freshState(): State {
     notifPrefs: { pickup: true, message: true, agenda: true, announcement: true },
     customGuardians: [],
     customGuardianships: [],
+    salas: SALAS.map((s) => ({ ...s })),
+    studentSala: { ...STUDENT_SALA },
+    teacherTasks: { ...TEACHER_TASKS },
     syncStatus: SYNC_ENABLED ? "connecting" : "off",
     syncDetail: "",
   };
@@ -441,6 +451,50 @@ class Store {
       title: `Retiro confirmado — ${student?.name ?? "su hijo/a"}`,
       body: `Se registró el retiro de ${student?.name ?? "su hijo/a"} por ${who?.name ?? "la persona autorizada"} el ${fecha} a las ${hora} hs en el acceso del establecimiento (${modoTxt}).`,
     });
+  }
+
+  // --- ADMINISTRACIÓN DEL ESTABLECIMIENTO (Dirección) ---
+  salas(): Sala[] { return this.state.salas; }
+  salaById(id: string): Sala | undefined { return this.state.salas.find((s) => s.id === id); }
+  /** Sala asignada a un alumno (o la de su classroom semilla como respaldo). */
+  salaOfStudent(studentId: string): Sala | undefined {
+    const id = this.state.studentSala[studentId];
+    return id ? this.salaById(id) : undefined;
+  }
+  /** Nombre de sala/curso de un alumno para mostrar (admin tiene prioridad). */
+  studentClassroom(studentId: string): string {
+    return this.salaOfStudent(studentId)?.name
+      ?? STUDENTS.find((s) => s.id === studentId)?.classroom
+      ?? "—";
+  }
+  salaOfTeacher(teacherId: string): Sala | undefined {
+    return this.state.salas.find((s) => s.teacherId === teacherId);
+  }
+  studentsOfSala(salaId: string): typeof STUDENTS {
+    return STUDENTS.filter((s) => this.state.studentSala[s.id] === salaId);
+  }
+  teacherTasksOf(teacherId: string): string { return this.state.teacherTasks[teacherId] ?? ""; }
+
+  private isDirector() { return this.currentUser()?.role === "director"; }
+  addSala(name: string, turno: Turno) {
+    if (!this.isDirector() || !name.trim()) return;
+    this.commit({ salas: [...this.state.salas, { id: ulid("sala_"), name: name.trim(), turno }] });
+  }
+  updateSala(id: string, patch: Partial<Omit<Sala, "id">>) {
+    if (!this.isDirector()) return;
+    this.commit({ salas: this.state.salas.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
+  }
+  deleteSala(id: string) {
+    if (!this.isDirector()) return;
+    this.commit({ salas: this.state.salas.filter((s) => s.id !== id) });
+  }
+  assignStudentSala(studentId: string, salaId: string) {
+    if (!this.isDirector()) return;
+    this.commit({ studentSala: { ...this.state.studentSala, [studentId]: salaId } });
+  }
+  setTeacherTasks(teacherId: string, tareas: string) {
+    if (!this.isDirector()) return;
+    this.commit({ teacherTasks: { ...this.state.teacherTasks, [teacherId]: tareas } });
   }
 
   // --- MENSAJERÍA bidireccional ---

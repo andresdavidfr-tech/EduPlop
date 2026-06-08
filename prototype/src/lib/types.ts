@@ -25,6 +25,16 @@ export interface Guardianship {
   role: "primary_guardian" | "authorized";
 }
 
+// --- Estructura del establecimiento (administrable por Dirección) ---
+export type Turno = "mañana" | "tarde";
+
+export interface Sala {
+  id: string;
+  name: string;      // p. ej. "Sala Verde", "1° A"
+  turno: Turno;
+  teacherId?: string; // docente a cargo
+}
+
 /** Claims que viajan firmados dentro del QR (ver docs/03). */
 export interface TokenClaims {
   iss: string; // institución

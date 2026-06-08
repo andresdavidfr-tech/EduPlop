@@ -6,6 +6,7 @@ import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
+import { Administracion } from "../components/Administracion";
 import { downloadReceipt } from "../lib/receipt";
 
 const VIEWS: SectionDef[] = [
@@ -13,7 +14,7 @@ const VIEWS: SectionDef[] = [
   { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "comunicado", label: "Comunicado", icon: "📣" },
-  { key: "autorizados", label: "Autorizados", icon: "👥" },
+  { key: "administracion", label: "Administración", icon: "🗂️" },
   { key: "seguridad", label: "Seguridad", icon: "🔐" },
   { key: "registros", label: "Auditoría", icon: "📜" },
 ];
@@ -192,30 +193,7 @@ export function Directivo() {
       </section>
       </>}
 
-      {view === "autorizados" && (
-      <section className="card">
-        <h2>Autorizados (lista de revocación)</h2>
-        <p className="muted small">Revocar suspende a la persona en todos los retiros (incluso offline, vía caché).</p>
-        <table className="tbl">
-          <tbody>
-            {store.guardians().map((g) => {
-              const revoked = state.revokedGuardians.includes(g.id);
-              return (
-                <tr key={g.id}>
-                  <td>{g.emoji} {g.name} <span className="mono">· {g.relation}</span></td>
-                  <td>{revoked ? <span className="pill revoked">revocado</span> : <span className="pill active">activo</span>}</td>
-                  <td style={{ textAlign: "right" }}>
-                    {revoked
-                      ? <button className="link" onClick={() => store.restoreGuardian(g.id)}>Rehabilitar</button>
-                      : <button className="link" onClick={() => store.revokeGuardian(g.id)}>Revocar</button>}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
-      )}
+      {view === "administracion" && <Administracion />}
 
       {view === "registros" && <>
       <section className="card span2">

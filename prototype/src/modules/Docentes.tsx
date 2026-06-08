@@ -17,7 +17,6 @@ const VIEWS: SectionDef[] = [
   { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "puerta", label: "Puerta / Aula", icon: "🚪" },
-  { key: "manual", label: "Registro manual", icon: "✍️" },
   { key: "salidas", label: "Salidas de hoy", icon: "📋" },
 ];
 
@@ -70,19 +69,6 @@ export function Docentes() {
   function sync() {
     const r = store.syncOfflineQueue();
     setToast({ ok: r.conflicts === 0, msg: `Reconciliados ${r.synced} comprobante(s). Conflictos: ${r.conflicts}.` });
-  }
-
-  // retiro manual (contingencia)
-  const [mStudent, setMStudent] = useState(STUDENTS[0].id);
-  const mAuthorizeds = useMemo(() => store.authorizedFor(mStudent), [mStudent, state.customGuardians]);
-  const [mAuth, setMAuth] = useState(mAuthorizeds[0]?.id);
-  function manual() {
-    const auth = mAuth ?? mAuthorizeds[0]?.id;
-    const res = store.manualPickup(mStudent, auth, teacherId);
-    if (res.ok) playSuccess(); else playError();
-    setToast(res.ok
-      ? { ok: true, msg: `Retiro manual registrado (${res.receipt?.mode}). Se avisó a la familia.` }
-      : { ok: false, msg: res.reason ?? "Rechazado" });
   }
 
   const announcements = store.notificationsFor(user).filter((n) => n.kind === "announcement");
@@ -140,30 +126,6 @@ export function Docentes() {
 
       {toast && <div className={`toast span2 ${toast.ok ? "ok" : "bad"}`}>{toast.msg}</div>}
 
-      {view === "manual" && (
-      <section className="card span2">
-        <h2>Registro manual (si no hay pase)</h2>
-        <p className="muted small">Para casos sin QR (sin app, falla total). Queda registrado igual y se avisa a la familia.</p>
-        <div className="row gap wrap">
-          <div className="grow">
-            <label>Alumno/a</label>
-            <select value={mStudent} onChange={(e) => { setMStudent(e.target.value); setMAuth(undefined); }}>
-              {STUDENTS.map((s) => <option key={s.id} value={s.id}>{s.emoji} {s.name} · {s.classroom}</option>)}
-            </select>
-          </div>
-          <div className="grow">
-            <label>Quién retira</label>
-            <select value={mAuth ?? mAuthorizeds[0]?.id} onChange={(e) => setMAuth(e.target.value)}>
-              {mAuthorizeds.map((g) => (
-                <option key={g.id} value={g.id}>{g.emoji} {g.name} · {g.relation}{store.isRevoked(g.id) ? " (revocado)" : ""}</option>
-              ))}
-            </select>
-          </div>
-          <button className="ghost" onClick={manual}>Registrar retiro manual</button>
-        </div>
-      </section>
-      )}
-
       {view === "salidas" && (
       <section className="card span2">
         <h2>Salidas de hoy</h2>
@@ -207,7 +169,7 @@ export function Docentes() {
                 <div className="idcards">
                   <div className="idcard big">
                     <div className="avatar">{student?.emoji ?? "❓"}</div>
-                    <div><small>Alumno/a</small><b>{student?.name}</b><span className="mono">Doc. {student?.document}</span><span className="muted small">{student?.classroom}</span></div>
+                    <div><small>Alumno/a</small><b>{student?.name}</b><span className="mono">Doc. {student?.document}</span><span className="muted small">{student ? store.studentClassroom(student.id) : ""}</span></div>
                   </div>
                   <div className="idcard big highlight facial">
                     <Avatar g={authorized} size={92} />

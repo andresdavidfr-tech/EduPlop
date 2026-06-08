@@ -1,4 +1,4 @@
-import type { Student, Guardian, Guardianship, User } from "./types";
+import type { Student, Guardian, Guardianship, User, Sala } from "./types";
 
 export const INSTITUTION = { id: "inst_8842", name: "Colegio San Martín" };
 
@@ -28,6 +28,22 @@ export const TEACHERS = [
   { id: "teacher_119", name: "Doc. Pérez", classroom: "Sala Verde" },
   { id: "teacher_204", name: "Doc. Acosta", classroom: "1° A" },
 ];
+
+// --- Estructura del establecimiento (editable por Dirección) ---
+export const SALAS: Sala[] = [
+  { id: "sala_verde", name: "Sala Verde", turno: "mañana", teacherId: "teacher_119" },
+  { id: "sala_1a", name: "1° A", turno: "tarde", teacherId: "teacher_204" },
+];
+export const STUDENT_SALA: Record<string, string> = {
+  stu_001: "sala_verde",
+  stu_002: "sala_verde",
+  stu_003: "sala_1a",
+  stu_004: "sala_1a",
+};
+export const TEACHER_TASKS: Record<string, string> = {
+  teacher_119: "Maestra de sala",
+  teacher_204: "Maestra de sala",
+};
 
 export const DEVICE_ID = "dev_door_03";
 
