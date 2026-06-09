@@ -8,8 +8,10 @@ import type {
   Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
   Guardian, Guardianship, Sala, Turno,
 } from "./types";
-import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS } from "./seed";
+import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, type DemoAccount } from "./seed";
 import { SYNC_ENABLED, pullShared, pushShared } from "./sync";
+import * as auth from "./auth";
+import type { AuthSession, Profile } from "./auth";
 
 interface State {
   institutionKey: KeyPair;
@@ -22,7 +24,8 @@ interface State {
   consumedLocally: string[]; // jti consumidos en el dispositivo (anti-reuso offline)
   consumedJtis: string[]; // jti efectivamente retirados (compartido entre dispositivos)
   revokedGuardians: string[]; // lista de revocación (cacheable offline)
-  session: string | null; // username logueado
+  authStatus: "loading" | "anon" | "authed"; // estado de la sesión (local)
+  authUser: User | null; // usuario autenticado (local)
   notifications: Notification[];
   conversations: Conversation[];
   agenda: AgendaEvent[];
@@ -136,7 +139,8 @@ function freshState(): State {
     consumedLocally: [],
     consumedJtis: [],
     revokedGuardians: [],
-    session: null,
+    authStatus: SYNC_ENABLED ? "loading" : "anon",
+    authUser: null,
     notifications: [
       {
         id: "n_welcome", audienceRole: "family", kind: "announcement",
@@ -200,6 +204,8 @@ function hydrate(raw: string | null): State {
       institutionKey: base.institutionKey,
       syncStatus: base.syncStatus, // estado en vivo, no el persistido
       syncDetail: "",
+      authStatus: base.authStatus, // la sesión se restaura desde los tokens
+      authUser: null,
       settings: { ...base.settings, ...(saved.settings ?? {}) },
       notifPrefs: { ...base.notifPrefs, ...(saved.notifPrefs ?? {}) },
     };
@@ -220,6 +226,7 @@ class Store {
   constructor() {
     this.state = hydrate(safeStorage.get(LS_KEY));
     if (SYNC_ENABLED) this.initSync();
+    this.initAuth();
   }
 
   // --- React glue ---
@@ -327,16 +334,89 @@ class Store {
 
   get institutionPub() { return this.state.institutionKey.pub; }
 
-  // --- AUTENTICACIÓN (demo client-side) ---
-  login(username: string, password: string): { ok: boolean; reason?: string } {
-    const u = USERS.find((x) => x.username === username.trim().toLowerCase() && x.password === password);
-    if (!u) return { ok: false, reason: "Usuario o contraseña incorrectos" };
-    this.commit({ session: u.username });
+  // --- AUTENTICACIÓN ---
+  currentUser(): User | null { return this.state.authUser; }
+  private setAuth(status: State["authStatus"], user: User | null) {
+    this.state = { ...this.state, authStatus: status, authUser: user };
+    safeStorage.set(LS_KEY, JSON.stringify(this.state));
+    this.listeners.forEach((l) => l());
+  }
+  private profileToUser(p: Profile): User {
+    return {
+      username: p.email ?? p.id, password: "",
+      role: (p.role as User["role"]) ?? "family",
+      name: p.name ?? p.email ?? "Usuario",
+      guardianId: p.guardian_id ?? undefined,
+      teacherId: p.teacher_id ?? undefined,
+    };
+  }
+
+  /** Restaura la sesión al iniciar (Supabase Auth). */
+  private async initAuth() {
+    if (!SYNC_ENABLED) { this.setAuth("anon", null); return; }
+    let session = auth.loadStoredSession();
+    if (!session) { this.setAuth("anon", null); return; }
+    // valida el access token; si venció, intenta refrescar
+    let ok = await auth.getAuthUser(session.access_token);
+    if (!ok) {
+      const refreshed = await auth.refreshSession(session.refresh_token);
+      if (refreshed) { session = refreshed; auth.storeSession(session); ok = refreshed.user; }
+    }
+    if (!ok) { auth.storeSession(null); this.setAuth("anon", null); return; }
+    const profile = await auth.getProfile(session);
+    if (!profile) { this.setAuth("anon", null); return; }
+    this.setAuth("authed", this.profileToUser(profile));
+  }
+
+  /** Login con email + contraseña (cuentas creadas por la escuela). */
+  async loginWithPassword(email: string, password: string): Promise<{ ok: boolean; reason?: string }> {
+    if (!SYNC_ENABLED) {
+      // Fallback sin Supabase: cuentas demo locales (por usuario o email).
+      const u = USERS.find((x) => x.username === email.trim().toLowerCase().split("@")[0] && x.password === password);
+      if (!u) return { ok: false, reason: "Usuario o contraseña incorrectos" };
+      this.setAuth("authed", u);
+      return { ok: true };
+    }
+    const { session, error } = await auth.signIn(email.trim().toLowerCase(), password);
+    if (!session) return { ok: false, reason: error ?? "No se pudo iniciar sesión" };
+    auth.storeSession(session);
+    const profile = await auth.getProfile(session);
+    if (!profile) return { ok: false, reason: "Tu cuenta no tiene un perfil asignado. Contactá a la escuela." };
+    this.setAuth("authed", this.profileToUser(profile));
     return { ok: true };
   }
-  logout() { this.commit({ session: null }); }
-  currentUser(): User | null {
-    return USERS.find((u) => u.username === this.state.session) ?? null;
+
+  /** Entra con una cuenta demo: la autoaprovisiona (signup + perfil) la primera vez. */
+  async loginDemo(acc: DemoAccount): Promise<{ ok: boolean; reason?: string }> {
+    if (!SYNC_ENABLED) {
+      this.setAuth("authed", { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId });
+      return { ok: true };
+    }
+    let session: AuthSession | undefined = (await auth.signIn(acc.email, acc.password)).session;
+    if (!session) session = (await auth.signUp(acc.email, acc.password)).session; // primera vez
+    if (!session) {
+      // si el signup falló por existir, reintenta login
+      session = (await auth.signIn(acc.email, acc.password)).session;
+    }
+    if (!session) return { ok: false, reason: "No se pudo crear/iniciar la cuenta demo. Revisá la config de Supabase Auth." };
+    auth.storeSession(session);
+    let profile = await auth.getProfile(session);
+    if (!profile) {
+      profile = await auth.upsertProfile(session, {
+        email: acc.email, name: acc.name, role: acc.role,
+        guardian_id: acc.guardianId ?? null, teacher_id: acc.teacherId ?? null,
+      });
+    }
+    this.setAuth("authed", profile ? this.profileToUser(profile)
+      : { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId });
+    return { ok: true };
+  }
+
+  async logout() {
+    const s = auth.loadStoredSession();
+    if (s) await auth.signOut(s.access_token);
+    auth.storeSession(null);
+    this.setAuth("anon", null);
   }
 
   // --- NOTIFICACIONES / COMUNICACIÓN ---

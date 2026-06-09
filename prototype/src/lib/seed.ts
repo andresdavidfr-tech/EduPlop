@@ -54,6 +54,24 @@ export const USERS: User[] = [
   { username: "direccion", password: "direccion123", role: "director", name: "Dirección — Colegio San Martín" },
 ];
 
+/**
+ * Cuentas demo para Supabase Auth (auth real). La primera vez se autoaprovisionan
+ * (signup + perfil); luego es solo login. En producción las crea la escuela.
+ */
+export interface DemoAccount {
+  email: string;
+  password: string;
+  role: User["role"];
+  name: string;
+  guardianId?: string;
+  teacherId?: string;
+}
+export const DEMO_ACCOUNTS: DemoAccount[] = [
+  { email: "familia@eduplop.demo", password: "familia123", role: "family", name: "Laura Fernández", guardianId: "guar_010" },
+  { email: "docente@eduplop.demo", password: "docente123", role: "teacher", name: "Doc. Pérez", teacherId: "teacher_119" },
+  { email: "direccion@eduplop.demo", password: "direccion123", role: "director", name: "Dirección — Colegio San Martín" },
+];
+
 export const ROLE_MODULES: Record<string, ("familias" | "docentes" | "directivo")[]> = {
   family: ["familias"],
   teacher: ["docentes"],
