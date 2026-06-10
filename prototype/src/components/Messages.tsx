@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { store, useStore, CATEGORY_LABEL } from "../lib/store";
+import { ProfileAvatar } from "./ProfileAvatar";
 import type { MessageCategory } from "../lib/types";
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -60,8 +61,11 @@ export function Messages() {
               <div className="thread-msgs">
                 {active.messages.map((m, i) => (
                   <div key={i} className={`thread-msg ${m.from === user?.username ? "mine" : "theirs"}`}>
-                    <small>{m.fromName}</small>
-                    <div className="bubble">{m.body}</div>
+                    <ProfileAvatar username={m.from} name={m.fromName} size={28} />
+                    <div className="thread-msg-body">
+                      <small>{m.fromName}</small>
+                      <div className="bubble">{m.body}</div>
+                    </div>
                   </div>
                 ))}
               </div>

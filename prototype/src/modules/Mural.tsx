@@ -24,9 +24,12 @@ function mediaOf(post: MuralPost): MuralMedia[] {
   return post.images.map((url) => ({ kind: "image", url }));
 }
 
-function Avatar({ src, name }: { src: string; name: string }) {
-  if (src.startsWith("http")) return <img className="avatar-img mural-av" src={src} alt={name} />;
-  return <span className="mural-av emoji" aria-hidden="true">{src}</span>;
+/** Avatar del autor del post: foto de perfil si la tiene, si no su emoji/imagen. */
+function AuthorAvatar({ post }: { post: MuralPost }) {
+  const photo = post.authorUser ? store.profilePhotoOf(post.authorUser) : undefined;
+  if (photo) return <img className="avatar-img mural-av" src={photo} alt={post.authorName} />;
+  if (post.authorAvatar.startsWith("http")) return <img className="avatar-img mural-av" src={post.authorAvatar} alt={post.authorName} />;
+  return <span className="mural-av emoji" aria-hidden="true">{post.authorAvatar}</span>;
 }
 
 export function Mural() {
@@ -89,7 +92,7 @@ function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; on
   return (
     <article className="card span2 mural-post">
       <header className="mural-head">
-        <Avatar src={post.authorAvatar} name={post.authorName} />
+        <AuthorAvatar post={post} />
         <div className="grow">
           <b>{post.authorName}</b>
           <small className="muted">{post.salaName ? `${post.salaName} · ` : ""}{timeAgo(post.ts)}</small>

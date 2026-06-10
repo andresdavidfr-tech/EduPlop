@@ -2,6 +2,7 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { store, useStore } from "./lib/store";
 import { Login } from "./modules/Login";
 import { NotificationsBell } from "./components/Notifications";
+import { ProfilePhotoButton } from "./components/ProfileAvatar";
 import { Assistant } from "./components/Assistant";
 import { Logo } from "./components/Logo";
 import { INSTITUTION, ROLE_MODULES, ROLE_LABEL } from "./lib/seed";
@@ -66,6 +67,7 @@ function Shell({ allowed, userName, userRole, pendingSync, syncStatus, syncDetai
 
         <div className="user-area">
           <NotificationsBell />
+          <ProfilePhotoButton />
           <div className="user-chip">
             <b>{userName}</b>
             <small>{userRole}</small>
