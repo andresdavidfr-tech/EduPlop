@@ -83,7 +83,7 @@ body {
 /* form */
 label, .field-label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
 label.mt { margin-top: 18px; }
-select, input[type="text"], input[type="password"], input[type="date"], input[type="time"], input:not([type]) {
+select, input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="tel"], input[type="date"], input[type="time"], input:not([type]) {
   width: 100%; padding: 11px 12px; min-height: 44px; border: 1px solid var(--line);
   border-radius: var(--radius-sm); font-size: 15px; background: var(--field-bg); color: var(--ink);
 }
