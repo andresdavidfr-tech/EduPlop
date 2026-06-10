@@ -73,9 +73,12 @@ export function Mural() {
 }
 
 function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; onOpen: (media: MuralMedia[], i: number) => void }) {
+  const user = store.currentUser();
   const [comment, setComment] = useState("");
+  const [editing, setEditing] = useState(false);
   const media = mediaOf(post);
   const likes = post.likedBy.length;
+  const canManage = store.canManageMuralPost(post);
 
   function send() {
     if (!comment.trim()) return;
@@ -91,11 +94,22 @@ function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; on
           <b>{post.authorName}</b>
           <small className="muted">{post.salaName ? `${post.salaName} · ` : ""}{timeAgo(post.ts)}</small>
         </div>
+        {canManage && !editing && (
+          <div className="mural-manage">
+            <button className="ghost small-btn" onClick={() => setEditing(true)}>✏️ Editar</button>
+            <button className="ghost small-btn danger" onClick={() => { if (confirm("¿Eliminar esta publicación?")) store.deleteMuralPost(post.id); }}>🗑️ Borrar</button>
+          </div>
+        )}
       </header>
 
-      {post.text && <p className="mural-text">{post.text}</p>}
-
-      {media.length > 0 && <MediaGrid media={media} onOpen={(i) => onOpen(media, i)} />}
+      {editing ? (
+        <Composer post={post} onDone={() => setEditing(false)} />
+      ) : (
+        <>
+          {post.text && <p className="mural-text">{post.text}</p>}
+          {media.length > 0 && <MediaGrid media={media} onOpen={(i) => onOpen(media, i)} />}
+        </>
+      )}
 
       <div className="mural-actions">
         <button className={liked ? "like-btn liked" : "like-btn"} onClick={() => store.toggleMuralLike(post.id)}
@@ -108,9 +122,18 @@ function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; on
 
       {post.comments.length > 0 && (
         <ul className="mural-comments">
-          {post.comments.map((c) => (
-            <li key={c.id}><b>{c.fromName}</b> {c.body} <em className="muted">· {timeAgo(c.ts)}</em></li>
-          ))}
+          {post.comments.map((c) => {
+            const canDelete = !!user && (c.fromUser === user.username || canManage);
+            return (
+              <li key={c.id}>
+                <span><b>{c.fromName}</b> {c.body} <em className="muted">· {timeAgo(c.ts)}</em></span>
+                {canDelete && (
+                  <button className="cmt-x" title="Borrar comentario" aria-label="Borrar comentario"
+                    onClick={() => store.deleteMuralComment(post.id, c.id)}>✕</button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -162,9 +185,10 @@ function Lightbox({ media, i, onIndex, onClose }: { media: MuralMedia[]; i: numb
   );
 }
 
-function Composer({ onDone }: { onDone: () => void }) {
-  const [text, setText] = useState("");
-  const [media, setMedia] = useState<MuralMedia[]>([]);
+function Composer({ onDone, post }: { onDone: () => void; post?: MuralPost }) {
+  const isEdit = !!post;
+  const [text, setText] = useState(post?.text ?? "");
+  const [media, setMedia] = useState<MuralMedia[]>(post ? mediaOf(post) : []);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -200,7 +224,8 @@ function Composer({ onDone }: { onDone: () => void }) {
 
   function publish() {
     if (!text.trim() && media.length === 0) return;
-    store.addMuralPost({ text, media });
+    if (isEdit && post) store.updateMuralPost(post.id, { text, media });
+    else store.addMuralPost({ text, media });
     onDone();
   }
 
@@ -228,7 +253,8 @@ function Composer({ onDone }: { onDone: () => void }) {
           {uploading ? <><span className="spinner" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }} />Subiendo…</> : "📷 Fotos / 🎬 Videos"}
         </button>
         <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={onFiles} />
-        <button className="primary grow" onClick={publish} disabled={uploading || (!text.trim() && media.length === 0)}>Publicar</button>
+        <button className="primary grow" onClick={publish} disabled={uploading || (!text.trim() && media.length === 0)}>{isEdit ? "Guardar cambios" : "Publicar"}</button>
+        {isEdit && <button className="ghost" onClick={onDone} disabled={uploading}>Cancelar</button>}
       </div>
     </div>
   );

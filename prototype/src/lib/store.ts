@@ -461,6 +461,29 @@ class Store {
   sendAnnouncement(audienceRole: "family" | "teacher", title: string, body: string) {
     this.pushNotification({ audienceRole, kind: "announcement", title, body });
   }
+  /** Comunicados enviados (notificaciones tipo announcement), del más nuevo al más viejo. */
+  announcements(): Notification[] {
+    return this.state.notifications
+      .filter((n) => n.kind === "announcement")
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }
+  /** Edita un comunicado ya enviado (solo dirección). */
+  updateAnnouncement(id: string, patch: { title: string; body: string; audienceRole?: "family" | "teacher" }) {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return;
+    this.commit({
+      notifications: this.state.notifications.map((n) =>
+        n.id === id && n.kind === "announcement"
+          ? { ...n, title: patch.title.trim(), body: patch.body.trim(), audienceRole: patch.audienceRole ?? n.audienceRole }
+          : n),
+    });
+  }
+  /** Elimina un comunicado ya enviado (solo dirección). */
+  deleteAnnouncement(id: string) {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return;
+    this.commit({ notifications: this.state.notifications.filter((n) => !(n.id === id && n.kind === "announcement")) });
+  }
   notificationsFor(user: User | null): Notification[] {
     if (!user) return [];
     return this.state.notifications.filter(
@@ -707,7 +730,8 @@ class Store {
     const u = this.currentUser();
     if (!u || u.role === "family") return; // solo el colegio publica
     const post: MuralPost = {
-      id: ulid("post_"), authorName: u.name, authorAvatar: u.role === "teacher" ? "🧑‍🏫" : "🏫",
+      id: ulid("post_"), authorName: u.name, authorUser: u.username,
+      authorAvatar: u.role === "teacher" ? "🧑‍🏫" : "🏫",
       salaName: input.salaName, text: input.text.trim(),
       images: input.media.filter((m) => m.kind === "image").map((m) => m.url), // compat
       media: input.media,
@@ -740,6 +764,44 @@ class Store {
     this.commit({
       muralPosts: this.state.muralPosts.map((p) =>
         p.id === postId ? { ...p, comments: [...p.comments, comment] } : p),
+    });
+  }
+  /** ¿El usuario actual puede editar/borrar esta publicación? (autor o dirección) */
+  canManageMuralPost(post: MuralPost): boolean {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return false;
+    return u.role === "director" || post.authorUser === u.username;
+  }
+  /** Edita el texto y la media de una publicación (autor o dirección). */
+  updateMuralPost(postId: string, patch: { text: string; media: MuralMedia[] }) {
+    const post = this.state.muralPosts.find((p) => p.id === postId);
+    if (!post || !this.canManageMuralPost(post)) return;
+    this.commit({
+      muralPosts: this.state.muralPosts.map((p) =>
+        p.id === postId
+          ? { ...p, text: patch.text.trim(), media: patch.media, images: patch.media.filter((m) => m.kind === "image").map((m) => m.url) }
+          : p),
+    });
+  }
+  /** Elimina una publicación (autor o dirección). */
+  deleteMuralPost(postId: string) {
+    const post = this.state.muralPosts.find((p) => p.id === postId);
+    if (!post || !this.canManageMuralPost(post)) return;
+    this.commit({ muralPosts: this.state.muralPosts.filter((p) => p.id !== postId) });
+  }
+  /** Elimina un comentario (su autor, el autor del post o dirección). */
+  deleteMuralComment(postId: string, commentId: string) {
+    const u = this.currentUser();
+    if (!u) return;
+    const post = this.state.muralPosts.find((p) => p.id === postId);
+    if (!post) return;
+    const comment = post.comments.find((c) => c.id === commentId);
+    if (!comment) return;
+    const canDelete = comment.fromUser === u.username || this.canManageMuralPost(post);
+    if (!canDelete) return;
+    this.commit({
+      muralPosts: this.state.muralPosts.map((p) =>
+        p.id === postId ? { ...p, comments: p.comments.filter((c) => c.id !== commentId) } : p),
     });
   }
 

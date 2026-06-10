@@ -205,6 +205,7 @@ export interface MuralMedia {
 export interface MuralPost {
   id: string;
   authorName: string; // docente que publica
+  authorUser?: string; // username del autor (para permisos de edición)
   authorAvatar: string; // emoji o URL de avatar
   salaName?: string; // sala/grupo al que pertenece la publicación
   text: string;

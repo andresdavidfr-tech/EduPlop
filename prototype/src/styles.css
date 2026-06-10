@@ -513,8 +513,16 @@ textarea:focus { border-color: var(--brand); outline: none; }
 }
 
 .mural-comments { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); display: grid; gap: 8px; }
-.mural-comments li { font-size: 14px; line-height: 1.4; }
+.mural-comments li { font-size: 14px; line-height: 1.4; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .mural-comments li em { font-style: normal; font-size: 12px; }
+.cmt-x { flex: none; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 6px; }
+.cmt-x:hover { color: var(--bad); background: var(--soft); }
+
+.mural-manage { display: flex; gap: 6px; flex: none; }
+@media (max-width: 520px) {
+  .mural-head { flex-wrap: wrap; }
+  .mural-manage { width: 100%; }
+}
 
 .mural-add-comment { display: flex; gap: 8px; margin-top: 12px; }
 .mural-add-comment input { flex: 1 1 auto; }
