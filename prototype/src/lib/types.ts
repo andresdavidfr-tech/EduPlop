@@ -187,3 +187,24 @@ export interface NotifPrefs {
   agenda: boolean;
   announcement: boolean;
 }
+
+// --- Mural: feed de fotos/novedades publicado por los docentes ---
+export interface MuralComment {
+  id: string;
+  fromUser: string; // username del autor del comentario
+  fromName: string;
+  body: string;
+  ts: number;
+}
+
+export interface MuralPost {
+  id: string;
+  authorName: string; // docente que publica
+  authorAvatar: string; // emoji o URL de avatar
+  salaName?: string; // sala/grupo al que pertenece la publicación
+  text: string;
+  images: string[]; // URLs de las fotos
+  ts: number;
+  likedBy: string[]; // usernames que dieron "me gusta"
+  comments: MuralComment[];
+}

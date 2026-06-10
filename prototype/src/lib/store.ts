@@ -6,9 +6,9 @@ import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
   Settings, AuditEventType, TokenStatus, Notification, User,
   Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
-  Guardian, Guardianship, Sala, Turno,
+  Guardian, Guardianship, Sala, Turno, MuralPost,
 } from "./types";
-import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, type DemoAccount } from "./seed";
+import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, MURAL_POSTS, type DemoAccount } from "./seed";
 import { SYNC_ENABLED, pullShared, pushShared } from "./sync";
 import * as auth from "./auth";
 import type { AuthSession, Profile } from "./auth";
@@ -29,6 +29,7 @@ interface State {
   notifications: Notification[];
   conversations: Conversation[];
   agenda: AgendaEvent[];
+  muralPosts: MuralPost[]; // feed de novedades del Mural
   pushEnabled: boolean;
   notifPrefs: NotifPrefs;
   customGuardians: Guardian[]; // autorizados dados de alta por las familias
@@ -48,7 +49,7 @@ const LS_KEY = "eduplop-state-v3";
 const SHARED_KEYS: (keyof State)[] = [
   "tokens", "receipts", "ledger", "incidents", "settings", "revokedGuardians",
   "consumedJtis", "notifications", "conversations", "agenda", "customGuardians",
-  "customGuardianships", "salas", "studentSala", "teacherTasks",
+  "customGuardianships", "salas", "studentSala", "teacherTasks", "muralPosts",
 ];
 
 function pickShared(s: State): Record<string, unknown> {
@@ -86,13 +87,19 @@ function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unkno
   const conversations = unionBy(a.conversations ?? [], b.conversations ?? [], (c) => c.id,
     (x, y) => (y.updatedAt >= x.updatedAt ? y : x));
   const agenda = unionBy(a.agenda ?? [], b.agenda ?? [], (e) => e.id);
+  const muralPosts = unionBy(a.muralPosts ?? [], b.muralPosts ?? [], (p) => p.id,
+    (x, y) => ({
+      ...y,
+      likedBy: uniq(x.likedBy, y.likedBy),
+      comments: unionBy(x.comments ?? [], y.comments ?? [], (c) => c.id),
+    }));
   const customGuardians = unionBy(a.customGuardians ?? [], b.customGuardians ?? [], (g) => g.id,
     (x, y) => (y.photo ? y : x)); // preferimos la versión que trae foto
   const customGuardianships = unionBy(a.customGuardianships ?? [], b.customGuardianships ?? [],
     (g) => `${g.guardianId}|${g.studentId}`);
   const salas = unionBy(a.salas ?? [], b.salas ?? [], (s) => s.id);
   return {
-    tokens, receipts, ledger, incidents, notifications, conversations, agenda,
+    tokens, receipts, ledger, incidents, notifications, conversations, agenda, muralPosts,
     customGuardians, customGuardianships, salas,
     revokedGuardians: uniq(a.revokedGuardians, b.revokedGuardians),
     consumedJtis: uniq(a.consumedJtis, b.consumedJtis),
@@ -171,6 +178,7 @@ function freshState(): State {
       { id: "a_acto", title: "Acto del 9 de Julio", description: "Vengan con escarapela. Patio central.", date: todayPlus(10), time: "10:00", type: "acto", audienceRole: "all", createdBy: "direccion", rsvps: {} },
       { id: "a_salida", title: "Salida didáctica al museo", description: "Traer autorización y vianda.", date: todayPlus(17), time: "09:00", type: "salida", audienceRole: "family", createdBy: "docente", rsvps: {} },
     ],
+    muralPosts: MURAL_POSTS.map((p) => ({ ...p, images: [...p.images], likedBy: [...p.likedBy], comments: p.comments.map((c) => ({ ...c })) })),
     pushEnabled: false,
     notifPrefs: { pickup: true, message: true, agenda: true, announcement: true },
     customGuardians: [],
@@ -686,6 +694,50 @@ class Store {
     this.commit({
       agenda: this.state.agenda.map((e) =>
         e.id === eventId ? { ...e, rsvps: { ...e.rsvps, [u.username]: value } } : e),
+    });
+  }
+
+  // --- MURAL: feed de novedades ---
+  /** Feed ordenado de más reciente a más antiguo. */
+  muralFeed(): MuralPost[] {
+    return [...this.state.muralPosts].sort((a, b) => b.ts - a.ts);
+  }
+  /** Publica una novedad (docentes y dirección). */
+  addMuralPost(input: { text: string; images: string[]; salaName?: string }) {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return; // solo el colegio publica
+    const post: MuralPost = {
+      id: ulid("post_"), authorName: u.name, authorAvatar: u.role === "teacher" ? "🧑‍🏫" : "🏫",
+      salaName: input.salaName, text: input.text.trim(), images: input.images,
+      ts: Date.now(), likedBy: [], comments: [],
+    };
+    this.commit({ muralPosts: [post, ...this.state.muralPosts] });
+    this.pushNotification({
+      audienceRole: "family", kind: "announcement",
+      title: `🖼️ Nueva publicación en el Mural`,
+      body: `${u.name}${input.salaName ? " · " + input.salaName : ""}: ${post.text.slice(0, 80)}`,
+    });
+  }
+  /** Alterna el "me gusta" del usuario actual en una publicación. */
+  toggleMuralLike(postId: string) {
+    const u = this.currentUser();
+    if (!u) return;
+    this.commit({
+      muralPosts: this.state.muralPosts.map((p) => {
+        if (p.id !== postId) return p;
+        const liked = p.likedBy.includes(u.username);
+        return { ...p, likedBy: liked ? p.likedBy.filter((x) => x !== u.username) : [...p.likedBy, u.username] };
+      }),
+    });
+  }
+  /** Agrega un comentario rápido a una publicación. */
+  addMuralComment(postId: string, body: string) {
+    const u = this.currentUser();
+    if (!u || !body.trim()) return;
+    const comment = { id: ulid("cm_"), fromUser: u.username, fromName: u.name, body: body.trim(), ts: Date.now() };
+    this.commit({
+      muralPosts: this.state.muralPosts.map((p) =>
+        p.id === postId ? { ...p, comments: [...p.comments, comment] } : p),
     });
   }
 

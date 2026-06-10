@@ -1,4 +1,4 @@
-import type { Student, Guardian, Guardianship, User, Sala } from "./types";
+import type { Student, Guardian, Guardianship, User, Sala, MuralPost } from "./types";
 
 export const INSTITUTION = { id: "inst_8842", name: "Colegio San Martín" };
 
@@ -83,3 +83,36 @@ export const ROLE_LABEL: Record<string, string> = {
   teacher: "Docente",
   director: "Dirección",
 };
+
+// Fotos de muestra para el Mural (placeholders estables de Picsum).
+const photo = (seed: string, n = 1) =>
+  Array.from({ length: n }, (_, i) => `https://picsum.photos/seed/eduplop-${seed}-${i}/640/640`);
+
+const HOUR = 3600000;
+
+// Feed inicial del Mural: novedades publicadas por los docentes.
+export const MURAL_POSTS: MuralPost[] = [
+  {
+    id: "post_001", authorName: "Seño Carla", authorAvatar: "👩‍🏫", salaName: "Sala Verde",
+    text: "¡Hoy plantamos en la huerta! 🌱 Cada peque cuidó su semillita. Gracias por mandar los delantales.",
+    images: photo("huerta", 5), ts: Date.now() - 2 * HOUR,
+    likedBy: ["direccion"],
+    comments: [
+      { id: "cm_1", fromUser: "direccion", fromName: "Dirección", body: "¡Hermosa actividad! 👏", ts: Date.now() - 1.5 * HOUR },
+    ],
+  },
+  {
+    id: "post_002", authorName: "Profe Martín", authorAvatar: "🧑‍🏫", salaName: "1° A",
+    text: "Cierre del proyecto de animales 🦁🐘. Quedaron geniales las maquetas. ¡Aplausos para todos!",
+    images: photo("animales", 3), ts: Date.now() - 26 * HOUR,
+    likedBy: [],
+    comments: [],
+  },
+  {
+    id: "post_003", authorName: "Seño Carla", authorAvatar: "👩‍🏫", salaName: "Sala Verde",
+    text: "Merienda compartida de la semana 🍎🥪. Recordá evitar frutos secos por las alergias de la sala.",
+    images: photo("merienda", 1), ts: Date.now() - 3 * 24 * HOUR,
+    likedBy: ["direccion"],
+    comments: [],
+  },
+];
