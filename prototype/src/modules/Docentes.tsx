@@ -1,6 +1,6 @@
 import { useMemo, useState, lazy, Suspense } from "react";
 import { store, useStore } from "../lib/store";
-import { STUDENTS, TEACHERS } from "../lib/seed";
+import { TEACHERS } from "../lib/seed";
 // El escáner arrastra ZXing (pesado): se carga solo al abrirlo.
 const QrScanner = lazy(() => import("../components/QrScanner").then((m) => ({ default: m.QrScanner })));
 import { Avatar } from "../components/Avatar";
@@ -41,7 +41,7 @@ export function Docentes() {
   // resultado de la verificación local del QR escaneado
   const verification = useMemo(() => (scanned ? store.verifyLocally(scanned) : null), [scanned]);
   const claims = verification?.claims;
-  const student = claims && STUDENTS.find((s) => s.id === claims.sub);
+  const student = claims && store.studentById(claims.sub);
   const authorized = claims ? store.resolveActor(claims) : undefined;
 
   async function handleScan(payload: string) {
@@ -138,7 +138,7 @@ export function Docentes() {
           <tbody>
             {state.receipts.length === 0 && <tr><td colSpan={4} className="muted">Sin salidas registradas.</td></tr>}
             {state.receipts.map((r) => {
-              const stu = STUDENTS.find((s) => s.id === r.studentId);
+              const stu = store.studentById(r.studentId);
               const g = store.guardianById(r.authorizedId);
               return (
                 <tr key={r.receiptId}>

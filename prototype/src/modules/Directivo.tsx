@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { store, useStore } from "../lib/store";
-import { STUDENTS } from "../lib/seed";
 import { shortHash } from "../lib/crypto";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
@@ -38,6 +37,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 export function Directivo() {
   const state = useStore();
+  const students = store.students();
   const [view, setView] = useState("resumen");
   const [chain, setChain] = useState<{ valid: boolean; brokenAt?: number; checked: number } | null>(null);
 
@@ -81,7 +81,7 @@ export function Directivo() {
           <button className="kpi clickable" onClick={() => setView("autorizados")}>
             <b>{autorizadosActivos}</b><small>Autorizados activos</small>
           </button>
-          <div className="kpi"><b>{STUDENTS.length}</b><small>Alumnos</small></div>
+          <div className="kpi"><b>{students.length}</b><small>Alumnos</small></div>
         </div>
       </section>
 
@@ -100,7 +100,7 @@ export function Directivo() {
         <h2>🚪 Retiros de hoy</h2>
         {retirosHoy.length === 0 && <p className="muted">Todavía no hubo retiros hoy.</p>}
         {retirosHoy.slice(0, 6).map((r) => {
-          const stu = STUDENTS.find((s) => s.id === r.studentId);
+          const stu = students.find((s) => s.id === r.studentId);
           const g = store.guardianById(r.authorizedId);
           return (
             <div key={r.receiptId} className="list-row">
@@ -173,7 +173,7 @@ export function Directivo() {
             <tbody>
               {state.receipts.length === 0 && <tr><td colSpan={5} className="muted">Sin comprobantes.</td></tr>}
               {state.receipts.map((r) => {
-                const stu = STUDENTS.find((s) => s.id === r.studentId);
+                const stu = students.find((s) => s.id === r.studentId);
                 const g = store.guardianById(r.authorizedId);
                 return (
                   <tr key={r.receiptId}>

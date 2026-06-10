@@ -9,6 +9,12 @@ export interface Student {
   emoji: string; // stand-in for photo_url (cotejo visual)
 }
 
+export interface Teacher {
+  id: string;
+  name: string;
+  classroom?: string;
+}
+
 export interface Guardian {
   id: string;
   name: string;

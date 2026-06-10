@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { store, useStore } from "../lib/store";
-import { STUDENTS, GUARDIANSHIPS, INSTITUTION } from "../lib/seed";
+import { INSTITUTION } from "../lib/seed";
 import type { AuthorizationToken } from "../lib/types";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
@@ -49,11 +49,11 @@ export function Familias() {
 
   const myStudents = useMemo(() => {
     if (user?.role === "family" && user.guardianId) {
-      const ids = GUARDIANSHIPS.filter((g) => g.guardianId === user.guardianId).map((g) => g.studentId);
-      return STUDENTS.filter((s) => ids.includes(s.id));
+      const ids = store.guardianships().filter((g) => g.guardianId === user.guardianId).map((g) => g.studentId);
+      return store.students().filter((s) => ids.includes(s.id));
     }
-    return STUDENTS;
-  }, [user?.guardianId]);
+    return store.students();
+  }, [user?.guardianId, state.customStudents, state.customGuardianships]);
 
   const [studentId, setStudentId] = useState(myStudents[0]?.id);
   useEffect(() => { if (!myStudents.find((s) => s.id === studentId)) setStudentId(myStudents[0]?.id); }, [myStudents]);
@@ -223,7 +223,7 @@ export function Familias() {
             {myTokens.length === 0 && <tr><td colSpan={4} className="muted">Todavía no autorizaste retiros.</td></tr>}
             {myTokens.slice(0, 8).map((t) => {
               const st = store.effectiveStatus(t);
-              const stu = STUDENTS.find((s) => s.id === t.claims.sub);
+              const stu = store.studentById(t.claims.sub);
               const g = store.guardianById(t.claims.act);
               return (
                 <tr key={t.jti}>
