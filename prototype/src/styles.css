@@ -594,3 +594,9 @@ textarea:focus { border-color: var(--brand); outline: none; }
 }
 .pfp-editor { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 6px 0; }
 .pfp-editor .pfp, .pfp-editor .pfp-ph { box-shadow: var(--shadow-2); }
+
+/* ===== Carga asistida por IA ===== */
+.carga-tbl td { vertical-align: middle; }
+.carga-tbl input, .carga-tbl select { min-height: 38px; padding: 7px 9px; font-size: 13px; }
+.carga-tbl th:last-child, .carga-tbl td:last-child { text-align: center; }
+.carga-preview .pill { margin-bottom: 3px; }

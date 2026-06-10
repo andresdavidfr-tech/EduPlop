@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { store, useStore } from "../lib/store";
 import { STUDENTS as SEED_STUDENTS, TEACHERS as SEED_TEACHERS } from "../lib/seed";
+import { CargaAsistida } from "./CargaAsistida";
 import type { Turno } from "../lib/types";
 
 const TURNOS: Turno[] = ["mañana", "tarde"];
@@ -32,6 +33,8 @@ export function Administracion() {
 
   return (
     <>
+      <CargaAsistida />
+
       {/* SALAS / CURSOS */}
       <section className="card span2">
         <h2>🏫 Salas y cursos</h2>

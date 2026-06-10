@@ -658,6 +658,36 @@ class Store {
     this.commit({ customTeachers: [...this.state.customTeachers, t] });
     return t;
   }
+  /** Alta en lote de alumnos (carga asistida). Devuelve cuántos se crearon. */
+  addStudentsBulk(items: { name: string; document?: string; emoji?: string; salaId?: string }[]): number {
+    if (!this.isDirector()) return 0;
+    const valid = items.filter((i) => i.name.trim());
+    if (valid.length === 0) return 0;
+    const nuevos: Student[] = [];
+    const salaUpdates: Record<string, string> = {};
+    for (const i of valid) {
+      const sala = i.salaId ? this.salaById(i.salaId) : undefined;
+      const stu: Student = {
+        id: ulid("stu_"), name: i.name.trim(), document: (i.document ?? "").trim(),
+        classroom: sala?.name ?? "Sin asignar", emoji: i.emoji?.trim() || "🧒",
+      };
+      nuevos.push(stu);
+      if (i.salaId) salaUpdates[stu.id] = i.salaId;
+    }
+    this.commit({
+      customStudents: [...this.state.customStudents, ...nuevos],
+      studentSala: { ...this.state.studentSala, ...salaUpdates },
+    });
+    return nuevos.length;
+  }
+  /** Alta en lote de docentes (carga asistida). Devuelve cuántos se crearon. */
+  addTeachersBulk(names: string[]): number {
+    if (!this.isDirector()) return 0;
+    const nuevos: Teacher[] = names.map((n) => n.trim()).filter(Boolean).map((n) => ({ id: ulid("teacher_"), name: n }));
+    if (nuevos.length === 0) return 0;
+    this.commit({ customTeachers: [...this.state.customTeachers, ...nuevos] });
+    return nuevos.length;
+  }
   /** Baja de un docente dado de alta por Dirección (no toca los semilla). */
   deleteTeacher(id: string) {
     if (!this.isDirector()) return;
