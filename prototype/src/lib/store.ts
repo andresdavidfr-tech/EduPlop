@@ -406,7 +406,13 @@ class Store {
       // si el signup falló por existir, reintenta login
       session = (await auth.signIn(acc.email, acc.password)).session;
     }
-    if (!session) return { ok: false, reason: "No se pudo crear/iniciar la cuenta demo. Revisá la config de Supabase Auth." };
+    if (!session) {
+      // Red de seguridad: si Supabase Auth no está disponible/configurado
+      // (p. ej. falta desactivar "Confirm email"), igual dejamos entrar a la
+      // cuenta demo de forma local para no bloquear la app.
+      this.setAuth("authed", { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId });
+      return { ok: true };
+    }
     auth.storeSession(session);
     let profile = await auth.getProfile(session);
     if (!profile) {
