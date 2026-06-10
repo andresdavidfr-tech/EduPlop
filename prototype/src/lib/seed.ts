@@ -76,7 +76,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
 export const ROLE_MODULES: Record<string, ("familias" | "docentes" | "directivo")[]> = {
   family: ["familias"],
   teacher: ["docentes"],
-  director: ["familias", "docentes", "directivo"], // dirección supervisa todo
+  director: ["directivo"], // Dirección tiene todo dentro de su propio módulo
 };
 
 export const ROLE_LABEL: Record<string, string> = {

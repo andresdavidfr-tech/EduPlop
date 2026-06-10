@@ -5,7 +5,6 @@ import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { Mural } from "./Mural";
 import { Comunicados } from "../components/Comunicados";
-import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { Administracion } from "../components/Administracion";
 import { downloadReceipt } from "../lib/receipt";
@@ -17,7 +16,6 @@ const VIEWS: SectionDef[] = [
   { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "comunicado", label: "Comunicado", icon: "📣" },
   { key: "administracion", label: "Administración", icon: "🗂️" },
-  { key: "seguridad", label: "Seguridad", icon: "🔐" },
   { key: "registros", label: "Auditoría", icon: "📜" },
 ];
 
@@ -39,7 +37,6 @@ export function Directivo() {
   const state = useStore();
   const students = store.students();
   const [view, setView] = useState("resumen");
-  const [chain, setChain] = useState<{ valid: boolean; brokenAt?: number; checked: number } | null>(null);
 
   // --- Resumen del día ---
   const todayStr = new Date().toDateString();
@@ -129,37 +126,6 @@ export function Directivo() {
       {view === "agenda" && <Agenda />}
       {view === "mensajes" && <Messages />}
       {view === "mural" && <Mural />}
-
-      {view === "seguridad" && <>
-      <PushSettings />
-
-      <section className="card">
-        <h2>Configuración de seguridad</h2>
-        <label>TTL del QR: <b>{state.settings.ttlSeconds}s</b></label>
-        <input type="range" min={10} max={300} step={5}
-          value={state.settings.ttlSeconds}
-          onChange={(e) => store.setTtl(Number(e.target.value))} />
-        <p className="muted small">Tolerancia de reloj (skew): {state.settings.clockSkewSeconds}s.</p>
-      </section>
-
-      <section className="card">
-        <h2>Integridad del libro de auditoría</h2>
-        <p className="muted small">Cadena hash append-only (SHA-256). Verificá o simulá una alteración.</p>
-        <div className="row gap">
-          <button className="primary" onClick={() => setChain(store.verifyChain())}>Verificar integridad</button>
-          <button className="ghost" onClick={() => { store.tamperLedger(); setChain(store.verifyChain()); }}>
-            Simular alteración
-          </button>
-        </div>
-        {chain && (
-          <div className={`verdict ${chain.valid ? "ok" : "bad"}`}>
-            {chain.valid
-              ? `✅ Cadena íntegra · ${chain.checked} eventos verificados`
-              : `❌ ¡Alteración detectada! Cadena rota en el evento #${chain.brokenAt}`}
-          </div>
-        )}
-      </section>
-      </>}
 
       {view === "administracion" && <Administracion />}
 
