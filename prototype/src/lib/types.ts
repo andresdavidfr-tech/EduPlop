@@ -135,6 +135,7 @@ export interface Notification {
   id: string;
   audienceRole?: Role; // destinatario por rol (p. ej. comunicado a familias)
   audienceUser?: string; // destinatario puntual (username)
+  audienceSala?: string; // segmenta a las familias de una sala (salaId)
   kind: "pickup" | "announcement" | "alert" | "message" | "agenda";
   title: string;
   body: string;

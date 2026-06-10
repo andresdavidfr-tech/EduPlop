@@ -458,10 +458,10 @@ class Store {
       new Notification(title, { body, icon: undefined, tag: ulid() });
     } catch { /* noop */ }
   }
-  sendAnnouncement(audienceRole: "family" | "teacher", title: string, body: string) {
+  sendAnnouncement(audienceRole: "family" | "teacher", title: string, body: string, salaId?: string) {
     const u = this.currentUser();
     if (!u || u.role === "family") return; // solo el colegio publica comunicados
-    this.pushNotification({ audienceRole, kind: "announcement", title, body, createdBy: u.username });
+    this.pushNotification({ audienceRole, kind: "announcement", title, body, createdBy: u.username, audienceSala: salaId || undefined });
   }
   /** Comunicados enviados (notificaciones tipo announcement), del más nuevo al más viejo. */
   announcements(): Notification[] {
@@ -476,13 +476,15 @@ class Store {
     return u.role === "director" || n.createdBy === u.username;
   }
   /** Edita un comunicado ya enviado (autor o dirección). */
-  updateAnnouncement(id: string, patch: { title: string; body: string; audienceRole?: "family" | "teacher" }) {
+  updateAnnouncement(id: string, patch: { title: string; body: string; audienceRole?: "family" | "teacher"; audienceSala?: string }) {
     const n = this.state.notifications.find((x) => x.id === id && x.kind === "announcement");
     if (!n || !this.canManageAnnouncement(n)) return;
     this.commit({
       notifications: this.state.notifications.map((x) =>
         x.id === id && x.kind === "announcement"
-          ? { ...x, title: patch.title.trim(), body: patch.body.trim(), audienceRole: patch.audienceRole ?? x.audienceRole }
+          ? { ...x, title: patch.title.trim(), body: patch.body.trim(),
+              audienceRole: patch.audienceRole ?? x.audienceRole,
+              audienceSala: patch.audienceSala || undefined }
           : x),
     });
   }
@@ -494,9 +496,19 @@ class Store {
   }
   notificationsFor(user: User | null): Notification[] {
     if (!user) return [];
-    return this.state.notifications.filter(
-      (n) => (n.audienceRole && n.audienceRole === user.role) || n.audienceUser === user.username
-    );
+    return this.state.notifications.filter((n) => {
+      if (n.audienceUser === user.username) return true;
+      if (!n.audienceRole || n.audienceRole !== user.role) return false;
+      // Comunicado segmentado a una sala: solo a las familias de esa sala.
+      if (n.audienceSala && user.role === "family") return this.familyInSala(user, n.audienceSala);
+      return true;
+    });
+  }
+  /** ¿Alguno de los hijos/as de esta familia está en la sala indicada? */
+  private familyInSala(user: User, salaId: string): boolean {
+    if (!user.guardianId) return false;
+    const studentIds = this.guardianships().filter((g) => g.guardianId === user.guardianId).map((g) => g.studentId);
+    return studentIds.some((sid) => this.state.studentSala[sid] === salaId);
   }
   unreadCountFor(user: User | null): number {
     if (!user) return 0;
