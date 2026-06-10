@@ -187,7 +187,12 @@ function Lightbox({ media, i, onIndex, onClose }: { media: MuralMedia[]; i: numb
 
 function Composer({ onDone, post }: { onDone: () => void; post?: MuralPost }) {
   const isEdit = !!post;
+  const user = store.currentUser();
+  const allSalas = store.salas();
+  const mySalas = user?.role === "director" ? allSalas : allSalas.filter((s) => s.teacherId === user?.teacherId);
+  const salaOptions = mySalas.length ? mySalas : allSalas;
   const [text, setText] = useState(post?.text ?? "");
+  const [salaId, setSalaId] = useState(post?.salaId ?? "");
   const [media, setMedia] = useState<MuralMedia[]>(post ? mediaOf(post) : []);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -224,13 +229,18 @@ function Composer({ onDone, post }: { onDone: () => void; post?: MuralPost }) {
 
   function publish() {
     if (!text.trim() && media.length === 0) return;
-    if (isEdit && post) store.updateMuralPost(post.id, { text, media });
-    else store.addMuralPost({ text, media });
+    if (isEdit && post) store.updateMuralPost(post.id, { text, media, salaId });
+    else store.addMuralPost({ text, media, salaId });
     onDone();
   }
 
   return (
     <div className="event-form">
+      <label htmlFor="mp-sala">¿Para qué sala?</label>
+      <select id="mp-sala" value={salaId} onChange={(e) => setSalaId(e.target.value)}>
+        <option value="">🏫 Toda la escuela</option>
+        {salaOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select>
       <label htmlFor="mp-text">¿Qué querés compartir?</label>
       <textarea id="mp-text" value={text} onChange={(e) => setText(e.target.value)} rows={3}
         placeholder="Contales a las familias qué hicimos hoy…" />

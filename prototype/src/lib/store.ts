@@ -506,9 +506,7 @@ class Store {
   }
   /** ¿Alguno de los hijos/as de esta familia está en la sala indicada? */
   private familyInSala(user: User, salaId: string): boolean {
-    if (!user.guardianId) return false;
-    const studentIds = this.guardianships().filter((g) => g.guardianId === user.guardianId).map((g) => g.studentId);
-    return studentIds.some((sid) => this.state.studentSala[sid] === salaId);
+    return this.familySalaIds(user).includes(salaId);
   }
   unreadCountFor(user: User | null): number {
     if (!user) return 0;
@@ -741,27 +739,40 @@ class Store {
   }
 
   // --- MURAL: feed de novedades ---
-  /** Feed ordenado de más reciente a más antiguo. */
+  /** Feed ordenado de más reciente a más antiguo, segmentado por sala para familias. */
   muralFeed(): MuralPost[] {
-    return [...this.state.muralPosts].sort((a, b) => b.ts - a.ts);
+    const u = this.currentUser();
+    let posts = [...this.state.muralPosts];
+    if (u?.role === "family") {
+      const salaIds = this.familySalaIds(u);
+      posts = posts.filter((p) => !p.salaId || salaIds.includes(p.salaId));
+    }
+    return posts.sort((a, b) => b.ts - a.ts);
+  }
+  /** Salas de los hijos/as de una familia. */
+  private familySalaIds(user: User): string[] {
+    if (!user.guardianId) return [];
+    const studentIds = this.guardianships().filter((g) => g.guardianId === user.guardianId).map((g) => g.studentId);
+    return studentIds.map((sid) => this.state.studentSala[sid]).filter(Boolean);
   }
   /** Publica una novedad (docentes y dirección). */
-  addMuralPost(input: { text: string; media: MuralMedia[]; salaName?: string }) {
+  addMuralPost(input: { text: string; media: MuralMedia[]; salaId?: string }) {
     const u = this.currentUser();
     if (!u || u.role === "family") return; // solo el colegio publica
+    const salaName = input.salaId ? this.state.salas.find((s) => s.id === input.salaId)?.name : undefined;
     const post: MuralPost = {
       id: ulid("post_"), authorName: u.name, authorUser: u.username,
       authorAvatar: u.role === "teacher" ? "🧑‍🏫" : "🏫",
-      salaName: input.salaName, text: input.text.trim(),
+      salaId: input.salaId || undefined, salaName, text: input.text.trim(),
       images: input.media.filter((m) => m.kind === "image").map((m) => m.url), // compat
       media: input.media,
       ts: Date.now(), likedBy: [], comments: [],
     };
     this.commit({ muralPosts: [post, ...this.state.muralPosts] });
     this.pushNotification({
-      audienceRole: "family", kind: "announcement",
+      audienceRole: "family", kind: "announcement", audienceSala: post.salaId,
       title: `🖼️ Nueva publicación en el Mural`,
-      body: `${u.name}${input.salaName ? " · " + input.salaName : ""}: ${post.text.slice(0, 80)}`,
+      body: `${u.name}${salaName ? " · " + salaName : ""}: ${post.text.slice(0, 80)}`,
     });
   }
   /** Alterna el "me gusta" del usuario actual en una publicación. */
@@ -792,14 +803,16 @@ class Store {
     if (!u || u.role === "family") return false;
     return u.role === "director" || post.authorUser === u.username;
   }
-  /** Edita el texto y la media de una publicación (autor o dirección). */
-  updateMuralPost(postId: string, patch: { text: string; media: MuralMedia[] }) {
+  /** Edita el texto, la media y la sala destino de una publicación (autor o dirección). */
+  updateMuralPost(postId: string, patch: { text: string; media: MuralMedia[]; salaId?: string }) {
     const post = this.state.muralPosts.find((p) => p.id === postId);
     if (!post || !this.canManageMuralPost(post)) return;
+    const salaId = patch.salaId || undefined;
+    const salaName = salaId ? this.state.salas.find((s) => s.id === salaId)?.name : undefined;
     this.commit({
       muralPosts: this.state.muralPosts.map((p) =>
         p.id === postId
-          ? { ...p, text: patch.text.trim(), media: patch.media, images: patch.media.filter((m) => m.kind === "image").map((m) => m.url) }
+          ? { ...p, text: patch.text.trim(), media: patch.media, salaId, salaName, images: patch.media.filter((m) => m.kind === "image").map((m) => m.url) }
           : p),
     });
   }

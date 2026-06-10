@@ -93,7 +93,7 @@ const HOUR = 3600000;
 // Feed inicial del Mural: novedades publicadas por los docentes.
 export const MURAL_POSTS: MuralPost[] = [
   {
-    id: "post_001", authorName: "Seño Carla", authorAvatar: "👩‍🏫", salaName: "Sala Verde",
+    id: "post_001", authorName: "Seño Carla", authorAvatar: "👩‍🏫", salaId: "sala_verde", salaName: "Sala Verde",
     text: "¡Hoy plantamos en la huerta! 🌱 Cada peque cuidó su semillita. Gracias por mandar los delantales.",
     images: photo("huerta", 5), ts: Date.now() - 2 * HOUR,
     likedBy: ["direccion"],
@@ -102,16 +102,16 @@ export const MURAL_POSTS: MuralPost[] = [
     ],
   },
   {
-    id: "post_002", authorName: "Profe Martín", authorAvatar: "🧑‍🏫", salaName: "1° A",
+    id: "post_002", authorName: "Profe Martín", authorAvatar: "🧑‍🏫", salaId: "sala_1a", salaName: "1° A",
     text: "Cierre del proyecto de animales 🦁🐘. Quedaron geniales las maquetas. ¡Aplausos para todos!",
     images: photo("animales", 3), ts: Date.now() - 26 * HOUR,
     likedBy: [],
     comments: [],
   },
   {
-    id: "post_003", authorName: "Seño Carla", authorAvatar: "👩‍🏫", salaName: "Sala Verde",
-    text: "Merienda compartida de la semana 🍎🥪. Recordá evitar frutos secos por las alergias de la sala.",
-    images: photo("merienda", 1), ts: Date.now() - 3 * 24 * HOUR,
+    id: "post_003", authorName: "Dirección — Colegio San Martín", authorAvatar: "🏫",
+    text: "📢 Reunión general de familias el próximo jueves a las 18 h en el SUM. ¡Los esperamos a todos!",
+    images: photo("reunion", 1), ts: Date.now() - 3 * 24 * HOUR,
     likedBy: ["direccion"],
     comments: [],
   },

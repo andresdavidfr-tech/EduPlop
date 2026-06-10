@@ -209,7 +209,8 @@ export interface MuralPost {
   authorName: string; // docente que publica
   authorUser?: string; // username del autor (para permisos de edición)
   authorAvatar: string; // emoji o URL de avatar
-  salaName?: string; // sala/grupo al que pertenece la publicación
+  salaId?: string; // sala destino (vacío = visible para toda la escuela)
+  salaName?: string; // nombre de la sala (derivado, para mostrar)
   text: string;
   images: string[]; // URLs de las fotos (legado; ver `media`)
   media?: MuralMedia[]; // fotos y videos de la publicación
