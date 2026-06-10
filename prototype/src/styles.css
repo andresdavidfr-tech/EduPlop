@@ -561,3 +561,18 @@ textarea:focus { border-color: var(--brand); outline: none; }
   .mural-photos.n1 .mural-photo { aspect-ratio: 4 / 3; max-height: 320px; }
   .lb-nav { width: 40px; height: 40px; font-size: 24px; }
 }
+
+/* ===== Mis Hijos (módulo familias) ===== */
+.kids-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 12px; }
+.kid-card { border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px; background: var(--soft); }
+.kid-head { display: flex; align-items: center; gap: 12px; }
+.kid-head b { display: block; line-height: 1.2; }
+.kid-head small { display: block; }
+.kid-emoji {
+  width: 48px; height: 48px; flex: none; border-radius: 50%; background: var(--panel);
+  border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 26px;
+}
+.kid-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.kid-auth { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.kid-auth ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.kid-auth li { font-size: 14px; }

@@ -12,6 +12,7 @@ import { uploadPhoto } from "../lib/storage";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 
 const VIEWS: SectionDef[] = [
+  { key: "hijos", label: "Mis Hijos", icon: "👨‍👩‍👧" },
   { key: "mural", label: "Mural", icon: "🖼️" },
   { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "agenda", label: "Agenda", icon: "📅" },
@@ -204,6 +205,43 @@ export function Familias() {
         )}
       </section>
       </>}
+
+      {view === "hijos" && (
+      <section className="card span2">
+        <h2>👨‍👩‍👧 Mis Hijos</h2>
+        <p className="muted small">Los niños/as que el colegio tiene registrados a tu nombre, con su sala y las personas autorizadas a retirarlos.</p>
+        {myStudents.length === 0 && <p className="muted">El colegio todavía no registró alumnos/as a tu nombre. Si creés que es un error, escribiles por Mensajes.</p>}
+        <div className="kids-grid">
+          {myStudents.map((s) => {
+            const sala = store.studentClassroom(s.id);
+            const auths = store.authorizedFor(s.id);
+            return (
+              <div key={s.id} className="kid-card">
+                <div className="kid-head">
+                  <span className="kid-emoji" aria-hidden="true">{s.emoji}</span>
+                  <div>
+                    <b>{s.name}</b>
+                    <small className="muted">Doc. {s.document}</small>
+                  </div>
+                </div>
+                <div className="kid-tags">
+                  <span className="pill active">🏫 {sala}</span>
+                </div>
+                <div className="kid-auth">
+                  <small className="muted">Autorizados a retirar:</small>
+                  <ul>
+                    {auths.map((a) => (
+                      <li key={a.id}>{a.emoji} {a.name} <span className="muted small">· {a.relation}{store.isRevoked(a.id) ? " (revocado)" : ""}</span></li>
+                    ))}
+                    {auths.length === 0 && <li className="muted small">Todavía no cargaste autorizados. Hacelo en “Autorizar retiro”.</li>}
+                  </ul>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      )}
 
       {view === "mural" && <Mural />}
       {view === "notif" && <PushSettings />}
