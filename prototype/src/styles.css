@@ -291,11 +291,13 @@ button { font-size: 14px; }
 .msg-thread { border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-height: 220px; display: flex; flex-direction: column; }
 .msg-thread h3 { margin: 0 0 10px; font-size: 15px; }
 .thread-msgs { flex: 1; overflow-y: auto; max-height: 300px; }
-.thread-msg { margin-bottom: 10px; }
-.thread-msg small { color: var(--muted); font-size: 11px; }
+.thread-msg { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+.thread-msg-body { min-width: 0; }
+.thread-msg small { color: var(--muted); font-size: 11px; display: block; }
 .thread-msg .bubble { display: inline-block; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; margin-top: 2px; }
 .thread-msg.theirs .bubble { background: var(--soft); }
-.thread-msg.mine { text-align: right; }
+.thread-msg.mine { flex-direction: row-reverse; }
+.thread-msg.mine .thread-msg-body { text-align: right; }
 .thread-msg.mine .bubble { background: var(--brand); color: #fff; }
 .empty.small { padding: 30px 10px; font-size: 13px; }
 
@@ -576,3 +578,19 @@ textarea:focus { border-color: var(--brand); outline: none; }
 .kid-auth { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
 .kid-auth ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
 .kid-auth li { font-size: 14px; }
+
+/* ===== Foto de perfil (avatar circular) ===== */
+.pfp { border-radius: 50%; object-fit: cover; border: 1px solid var(--line); display: inline-block; flex: none; background: var(--soft); }
+.pfp-ph {
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: var(--brand); color: #fff; font-weight: 700; border: 1px solid var(--line); flex: none;
+}
+.pfp-btn { position: relative; border: none; background: none; padding: 0; cursor: pointer; line-height: 0; border-radius: 50%; flex: none; }
+.pfp-btn:hover .pfp, .pfp-btn:hover .pfp-ph { filter: brightness(.95); }
+.pfp-edit {
+  position: absolute; right: -2px; bottom: -2px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--brand); color: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--panel);
+}
+.pfp-editor { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 6px 0; }
+.pfp-editor .pfp, .pfp-editor .pfp-ph { box-shadow: var(--shadow-2); }

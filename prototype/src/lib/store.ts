@@ -36,6 +36,7 @@ interface State {
   customGuardianships: Guardianship[];
   customStudents: Student[]; // matrícula dada de alta por Dirección
   customTeachers: Teacher[]; // nómina dada de alta por Dirección
+  profilePhotos: Record<string, string>; // username → foto de perfil (URL o dataURL)
   // --- Administración del establecimiento (editable por Dirección) ---
   salas: Sala[];
   studentSala: Record<string, string>; // studentId → salaId
@@ -52,7 +53,7 @@ const SHARED_KEYS: (keyof State)[] = [
   "tokens", "receipts", "ledger", "incidents", "settings", "revokedGuardians",
   "consumedJtis", "notifications", "conversations", "agenda", "customGuardians",
   "customGuardianships", "salas", "studentSala", "teacherTasks", "muralPosts",
-  "customStudents", "customTeachers",
+  "customStudents", "customTeachers", "profilePhotos",
 ];
 
 function pickShared(s: State): Record<string, unknown> {
@@ -111,6 +112,7 @@ function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unkno
     settings: { ...(a.settings ?? {}), ...(b.settings ?? {}) },
     studentSala: { ...(a.studentSala ?? {}), ...(b.studentSala ?? {}) },
     teacherTasks: { ...(a.teacherTasks ?? {}), ...(b.teacherTasks ?? {}) },
+    profilePhotos: { ...(a.profilePhotos ?? {}), ...(b.profilePhotos ?? {}) },
   };
 }
 
@@ -190,6 +192,7 @@ function freshState(): State {
     customGuardianships: [],
     customStudents: [],
     customTeachers: [],
+    profilePhotos: {},
     salas: SALAS.map((s) => ({ ...s })),
     studentSala: { ...STUDENT_SALA },
     teacherTasks: { ...TEACHER_TASKS },
@@ -441,6 +444,24 @@ class Store {
       teacherId: base.teacherId ?? acc.teacherId,
     });
     return { ok: true };
+  }
+
+  // --- FOTO DE PERFIL (visible para todos, sincronizada) ---
+  profilePhotoOf(username?: string): string | undefined {
+    const u = username ?? this.currentUser()?.username;
+    return u ? this.state.profilePhotos[u] : undefined;
+  }
+  myProfilePhoto(): string | undefined { return this.profilePhotoOf(); }
+  setProfilePhoto(url: string) {
+    const u = this.currentUser();
+    if (!u || !url) return;
+    this.commit({ profilePhotos: { ...this.state.profilePhotos, [u.username]: url } });
+  }
+  removeProfilePhoto() {
+    const u = this.currentUser();
+    if (!u) return;
+    const { [u.username]: _omit, ...rest } = this.state.profilePhotos;
+    this.commit({ profilePhotos: rest });
   }
 
   async logout() {
