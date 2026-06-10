@@ -421,8 +421,16 @@ class Store {
         guardian_id: acc.guardianId ?? null, teacher_id: acc.teacherId ?? null,
       });
     }
-    this.setAuth("authed", profile ? this.profileToUser(profile)
-      : { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId });
+    const base = profile ? this.profileToUser(profile)
+      : { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId };
+    // Garantizamos los datos de la cuenta demo (rol y entidad vinculada) aunque
+    // el perfil remoto esté incompleto: así la familia resuelve siempre su sala.
+    this.setAuth("authed", {
+      ...base,
+      role: base.role ?? acc.role,
+      guardianId: base.guardianId ?? acc.guardianId,
+      teacherId: base.teacherId ?? acc.teacherId,
+    });
     return { ok: true };
   }
 
@@ -751,7 +759,10 @@ class Store {
     let posts = [...this.state.muralPosts];
     if (u?.role === "family") {
       const salaIds = this.familySalaIds(u);
-      posts = posts.filter((p) => !p.salaId || salaIds.includes(p.salaId));
+      // Solo segmentamos si pudimos resolver las salas de la familia. Si no
+      // (guardianId o mapeo alumno→sala ausente/desincronizado), mostramos todo
+      // en lugar de ocultar publicaciones (fail-open).
+      if (salaIds.length) posts = posts.filter((p) => !p.salaId || salaIds.includes(p.salaId));
     }
     return posts.sort((a, b) => b.ts - a.ts);
   }
