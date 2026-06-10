@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { store, useStore } from "../lib/store";
-import type { MuralPost } from "../lib/types";
+import type { MuralPost, MuralMedia } from "../lib/types";
 import { compressImage, compressToBlob, fileToDataUrl } from "../lib/image";
 import { uploadPhoto } from "../lib/storage";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
@@ -18,18 +18,24 @@ function timeAgo(ts: number) {
   return new Date(ts).toLocaleDateString("es-AR", { day: "numeric", month: "short" });
 }
 
+/** Media de un post, con compatibilidad hacia atrás (posts viejos sólo con `images`). */
+function mediaOf(post: MuralPost): MuralMedia[] {
+  if (post.media && post.media.length) return post.media;
+  return post.images.map((url) => ({ kind: "image", url }));
+}
+
 function Avatar({ src, name }: { src: string; name: string }) {
   if (src.startsWith("http")) return <img className="avatar-img mural-av" src={src} alt={name} />;
   return <span className="mural-av emoji" aria-hidden="true">{src}</span>;
 }
 
 export function Mural() {
-  const state = useStore();
+  useStore();
   const user = store.currentUser();
   const posts = store.muralFeed();
   const canPost = user?.role !== "family";
   const [composing, setComposing] = useState(false);
-  const [lightbox, setLightbox] = useState<{ images: string[]; i: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ media: MuralMedia[]; i: number } | null>(null);
 
   return (
     <div className="grid">
@@ -42,7 +48,9 @@ export function Mural() {
             </button>
           )}
         </div>
-        <p className="muted small">Fotos y novedades que comparten los docentes del cole. 💛</p>
+        <p className="muted small">
+          {canPost ? "Compartí fotos y videos de la jornada con las familias. 💛" : "Fotos y videos que comparten los docentes del cole. 💛"}
+        </p>
         {composing && canPost && <Composer onDone={() => setComposing(false)} />}
       </section>
 
@@ -52,20 +60,21 @@ export function Mural() {
 
       {posts.map((p) => (
         <PostCard key={p.id} post={p} liked={!!user && p.likedBy.includes(user.username)}
-          onOpen={(i) => setLightbox({ images: p.images, i })} />
+          onOpen={(media, i) => setLightbox({ media, i })} />
       ))}
 
       {lightbox && (
-        <Lightbox images={lightbox.images} i={lightbox.i}
-          onIndex={(i) => setLightbox({ images: lightbox.images, i })}
+        <Lightbox media={lightbox.media} i={lightbox.i}
+          onIndex={(i) => setLightbox({ media: lightbox.media, i })}
           onClose={() => setLightbox(null)} />
       )}
     </div>
   );
 }
 
-function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; onOpen: (i: number) => void }) {
+function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; onOpen: (media: MuralMedia[], i: number) => void }) {
   const [comment, setComment] = useState("");
+  const media = mediaOf(post);
   const likes = post.likedBy.length;
 
   function send() {
@@ -86,7 +95,7 @@ function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; on
 
       {post.text && <p className="mural-text">{post.text}</p>}
 
-      {post.images.length > 0 && <PhotoGrid images={post.images} onOpen={onOpen} />}
+      {media.length > 0 && <MediaGrid media={media} onOpen={(i) => onOpen(media, i)} />}
 
       <div className="mural-actions">
         <button className={liked ? "like-btn liked" : "like-btn"} onClick={() => store.toggleMuralLike(post.id)}
@@ -114,18 +123,21 @@ function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; on
   );
 }
 
-function PhotoGrid({ images, onOpen }: { images: string[]; onOpen: (i: number) => void }) {
-  const shown = images.slice(0, 4);
-  const extra = images.length - shown.length;
+function MediaGrid({ media, onOpen }: { media: MuralMedia[]; onOpen: (i: number) => void }) {
+  const shown = media.slice(0, 4);
+  const extra = media.length - shown.length;
   const cls = `mural-photos n${Math.min(shown.length, 4)}`;
   return (
     <div className={cls}>
-      {shown.map((src, i) => {
+      {shown.map((m, i) => {
         const isLast = i === shown.length - 1 && extra > 0;
         return (
-          <button key={i} className="mural-photo" onClick={() => onOpen(i)} aria-label={`Ver foto ${i + 1}`}>
-            <img src={src} alt={`Foto ${i + 1}`} loading="lazy" />
-            {isLast && <span className="mural-more">+{extra} fotos</span>}
+          <button key={i} className="mural-photo" onClick={() => onOpen(i)} aria-label={`Ver ${m.kind === "video" ? "video" : "foto"} ${i + 1}`}>
+            {m.kind === "video"
+              ? <video src={m.url} muted playsInline preload="metadata" />
+              : <img src={m.url} alt={`Foto ${i + 1}`} loading="lazy" />}
+            {m.kind === "video" && !isLast && <span className="mural-play" aria-hidden="true">▶</span>}
+            {isLast && <span className="mural-more">+{extra}</span>}
           </button>
         );
       })}
@@ -133,41 +145,53 @@ function PhotoGrid({ images, onOpen }: { images: string[]; onOpen: (i: number) =
   );
 }
 
-function Lightbox({ images, i, onIndex, onClose }: { images: string[]; i: number; onIndex: (i: number) => void; onClose: () => void }) {
-  const prev = () => onIndex((i - 1 + images.length) % images.length);
-  const next = () => onIndex((i + 1) % images.length);
+function Lightbox({ media, i, onIndex, onClose }: { media: MuralMedia[]; i: number; onIndex: (i: number) => void; onClose: () => void }) {
+  const prev = () => onIndex((i - 1 + media.length) % media.length);
+  const next = () => onIndex((i + 1) % media.length);
+  const cur = media[i];
   return (
     <div className="lightbox" role="dialog" aria-modal="true" onClick={onClose}>
       <button className="lb-close" onClick={onClose} aria-label="Cerrar">✕</button>
-      {images.length > 1 && <button className="lb-nav lb-prev" onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Anterior">‹</button>}
-      <img className="lb-img" src={images[i]} alt={`Foto ${i + 1} de ${images.length}`} onClick={(e) => e.stopPropagation()} />
-      {images.length > 1 && <button className="lb-nav lb-next" onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Siguiente">›</button>}
-      {images.length > 1 && <span className="lb-count">{i + 1} / {images.length}</span>}
+      {media.length > 1 && <button className="lb-nav lb-prev" onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Anterior">‹</button>}
+      {cur.kind === "video"
+        ? <video className="lb-img" src={cur.url} controls autoPlay playsInline onClick={(e) => e.stopPropagation()} />
+        : <img className="lb-img" src={cur.url} alt={`Foto ${i + 1} de ${media.length}`} onClick={(e) => e.stopPropagation()} />}
+      {media.length > 1 && <button className="lb-nav lb-next" onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Siguiente">›</button>}
+      {media.length > 1 && <span className="lb-count">{i + 1} / {media.length}</span>}
     </div>
   );
 }
 
 function Composer({ onDone }: { onDone: () => void }) {
   const [text, setText] = useState("");
-  const [images, setImages] = useState<string[]>([]);
+  const [media, setMedia] = useState<MuralMedia[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
-    setUploading(true);
+    setUploading(true); setErr(null);
     try {
       for (const f of files) {
-        const dataUrl = await fileToDataUrl(f);
+        const isVideo = f.type.startsWith("video/");
+        const ext = isVideo ? (f.name.split(".").pop() || "mp4") : "jpg";
         let url: string | undefined;
         if (SYNC_ENABLED) {
-          const blob = await compressToBlob(dataUrl, 1024, 0.82);
-          if (blob) url = (await uploadPhoto(blob, `mural-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`)) ?? undefined;
+          // Imágenes: comprimimos a JPG. Videos: subimos el archivo tal cual.
+          const blob = isVideo ? f : await compressToBlob(await fileToDataUrl(f), 1280, 0.82);
+          if (blob) url = (await uploadPhoto(blob, `mural-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`)) ?? undefined;
         }
-        const src = url ?? (await compressImage(dataUrl, 800, 0.72));
-        setImages((prev) => [...prev, src]);
+        if (!url) {
+          // Fallback sin nube (o si falló la subida): data URL local.
+          url = isVideo ? await fileToDataUrl(f) : await compressImage(await fileToDataUrl(f), 900, 0.72);
+        }
+        const item: MuralMedia = { kind: isVideo ? "video" : "image", url };
+        setMedia((prev) => [...prev, item]);
       }
+    } catch {
+      setErr("No se pudo procesar algún archivo. Probá con otro.");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -175,8 +199,8 @@ function Composer({ onDone }: { onDone: () => void }) {
   }
 
   function publish() {
-    if (!text.trim() && images.length === 0) return;
-    store.addMuralPost({ text, images });
+    if (!text.trim() && media.length === 0) return;
+    store.addMuralPost({ text, media });
     onDone();
   }
 
@@ -185,22 +209,26 @@ function Composer({ onDone }: { onDone: () => void }) {
       <label htmlFor="mp-text">¿Qué querés compartir?</label>
       <textarea id="mp-text" value={text} onChange={(e) => setText(e.target.value)} rows={3}
         placeholder="Contales a las familias qué hicimos hoy…" />
-      {images.length > 0 && (
+      {media.length > 0 && (
         <div className="mural-thumbs">
-          {images.map((src, i) => (
+          {media.map((m, i) => (
             <span key={i} className="mural-thumb">
-              <img src={src} alt={`Adjunto ${i + 1}`} />
-              <button className="mural-thumb-x" onClick={() => setImages((p) => p.filter((_, j) => j !== i))} aria-label="Quitar">✕</button>
+              {m.kind === "video"
+                ? <video src={m.url} muted playsInline preload="metadata" />
+                : <img src={m.url} alt={`Adjunto ${i + 1}`} />}
+              {m.kind === "video" && <span className="mural-play sm" aria-hidden="true">▶</span>}
+              <button className="mural-thumb-x" onClick={() => setMedia((p) => p.filter((_, j) => j !== i))} aria-label="Quitar">✕</button>
             </span>
           ))}
         </div>
       )}
+      {err && <div className="login-error" role="alert">{err}</div>}
       <div className="row gap" style={{ marginTop: 12 }}>
         <button className="ghost" onClick={() => fileRef.current?.click()} disabled={uploading} aria-busy={uploading}>
-          {uploading ? <><span className="spinner" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }} />Subiendo…</> : "📷 Agregar fotos"}
+          {uploading ? <><span className="spinner" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }} />Subiendo…</> : "📷 Fotos / 🎬 Videos"}
         </button>
-        <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onFiles} />
-        <button className="primary grow" onClick={publish} disabled={uploading || (!text.trim() && images.length === 0)}>Publicar</button>
+        <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={onFiles} />
+        <button className="primary grow" onClick={publish} disabled={uploading || (!text.trim() && media.length === 0)}>Publicar</button>
       </div>
     </div>
   );

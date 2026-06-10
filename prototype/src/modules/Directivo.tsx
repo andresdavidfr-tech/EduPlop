@@ -4,6 +4,7 @@ import { STUDENTS } from "../lib/seed";
 import { shortHash } from "../lib/crypto";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
+import { Mural } from "./Mural";
 import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { Administracion } from "../components/Administracion";
@@ -11,6 +12,7 @@ import { downloadReceipt } from "../lib/receipt";
 
 const VIEWS: SectionDef[] = [
   { key: "resumen", label: "Resumen", icon: "📊" },
+  { key: "mural", label: "Mural", icon: "🖼️" },
   { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "comunicado", label: "Comunicado", icon: "📣" },
@@ -161,6 +163,7 @@ export function Directivo() {
 
       {view === "agenda" && <Agenda />}
       {view === "mensajes" && <Messages />}
+      {view === "mural" && <Mural />}
 
       {view === "seguridad" && <>
       <PushSettings />

@@ -197,13 +197,19 @@ export interface MuralComment {
   ts: number;
 }
 
+export interface MuralMedia {
+  kind: "image" | "video";
+  url: string;
+}
+
 export interface MuralPost {
   id: string;
   authorName: string; // docente que publica
   authorAvatar: string; // emoji o URL de avatar
   salaName?: string; // sala/grupo al que pertenece la publicación
   text: string;
-  images: string[]; // URLs de las fotos
+  images: string[]; // URLs de las fotos (legado; ver `media`)
+  media?: MuralMedia[]; // fotos y videos de la publicación
   ts: number;
   likedBy: string[]; // usernames que dieron "me gusta"
   comments: MuralComment[];

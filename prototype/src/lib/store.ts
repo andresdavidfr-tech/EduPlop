@@ -6,7 +6,7 @@ import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
   Settings, AuditEventType, TokenStatus, Notification, User,
   Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
-  Guardian, Guardianship, Sala, Turno, MuralPost,
+  Guardian, Guardianship, Sala, Turno, MuralPost, MuralMedia,
 } from "./types";
 import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, MURAL_POSTS, type DemoAccount } from "./seed";
 import { SYNC_ENABLED, pullShared, pushShared } from "./sync";
@@ -703,12 +703,14 @@ class Store {
     return [...this.state.muralPosts].sort((a, b) => b.ts - a.ts);
   }
   /** Publica una novedad (docentes y dirección). */
-  addMuralPost(input: { text: string; images: string[]; salaName?: string }) {
+  addMuralPost(input: { text: string; media: MuralMedia[]; salaName?: string }) {
     const u = this.currentUser();
     if (!u || u.role === "family") return; // solo el colegio publica
     const post: MuralPost = {
       id: ulid("post_"), authorName: u.name, authorAvatar: u.role === "teacher" ? "🧑‍🏫" : "🏫",
-      salaName: input.salaName, text: input.text.trim(), images: input.images,
+      salaName: input.salaName, text: input.text.trim(),
+      images: input.media.filter((m) => m.kind === "image").map((m) => m.url), // compat
+      media: input.media,
       ts: Date.now(), likedBy: [], comments: [],
     };
     this.commit({ muralPosts: [post, ...this.state.muralPosts] });
