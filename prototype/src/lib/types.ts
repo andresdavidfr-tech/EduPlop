@@ -138,6 +138,7 @@ export interface Notification {
   kind: "pickup" | "announcement" | "alert" | "message" | "agenda";
   title: string;
   body: string;
+  createdBy?: string; // username de quien lo creó (comunicados)
   timestamp: number;
   readBy: string[]; // usernames que ya la leyeron
 }

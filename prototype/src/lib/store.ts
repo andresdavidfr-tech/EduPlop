@@ -459,7 +459,9 @@ class Store {
     } catch { /* noop */ }
   }
   sendAnnouncement(audienceRole: "family" | "teacher", title: string, body: string) {
-    this.pushNotification({ audienceRole, kind: "announcement", title, body });
+    const u = this.currentUser();
+    if (!u || u.role === "family") return; // solo el colegio publica comunicados
+    this.pushNotification({ audienceRole, kind: "announcement", title, body, createdBy: u.username });
   }
   /** Comunicados enviados (notificaciones tipo announcement), del más nuevo al más viejo. */
   announcements(): Notification[] {
@@ -467,22 +469,28 @@ class Store {
       .filter((n) => n.kind === "announcement")
       .sort((a, b) => b.timestamp - a.timestamp);
   }
-  /** Edita un comunicado ya enviado (solo dirección). */
-  updateAnnouncement(id: string, patch: { title: string; body: string; audienceRole?: "family" | "teacher" }) {
+  /** ¿El usuario actual puede editar/borrar este comunicado? (autor o dirección) */
+  canManageAnnouncement(n: Notification): boolean {
     const u = this.currentUser();
-    if (!u || u.role === "family") return;
+    if (!u || u.role === "family") return false;
+    return u.role === "director" || n.createdBy === u.username;
+  }
+  /** Edita un comunicado ya enviado (autor o dirección). */
+  updateAnnouncement(id: string, patch: { title: string; body: string; audienceRole?: "family" | "teacher" }) {
+    const n = this.state.notifications.find((x) => x.id === id && x.kind === "announcement");
+    if (!n || !this.canManageAnnouncement(n)) return;
     this.commit({
-      notifications: this.state.notifications.map((n) =>
-        n.id === id && n.kind === "announcement"
-          ? { ...n, title: patch.title.trim(), body: patch.body.trim(), audienceRole: patch.audienceRole ?? n.audienceRole }
-          : n),
+      notifications: this.state.notifications.map((x) =>
+        x.id === id && x.kind === "announcement"
+          ? { ...x, title: patch.title.trim(), body: patch.body.trim(), audienceRole: patch.audienceRole ?? x.audienceRole }
+          : x),
     });
   }
-  /** Elimina un comunicado ya enviado (solo dirección). */
+  /** Elimina un comunicado ya enviado (autor o dirección). */
   deleteAnnouncement(id: string) {
-    const u = this.currentUser();
-    if (!u || u.role === "family") return;
-    this.commit({ notifications: this.state.notifications.filter((n) => !(n.id === id && n.kind === "announcement")) });
+    const n = this.state.notifications.find((x) => x.id === id && x.kind === "announcement");
+    if (!n || !this.canManageAnnouncement(n)) return;
+    this.commit({ notifications: this.state.notifications.filter((x) => x.id !== id) });
   }
   notificationsFor(user: User | null): Notification[] {
     if (!user) return [];

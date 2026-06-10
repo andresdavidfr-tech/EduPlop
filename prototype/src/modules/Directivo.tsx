@@ -5,6 +5,7 @@ import { shortHash } from "../lib/crypto";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { Mural } from "./Mural";
+import { Comunicados } from "../components/Comunicados";
 import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { Administracion } from "../components/Administracion";
@@ -51,18 +52,6 @@ export function Directivo() {
   const incidentesAbiertos = state.incidents.filter((i) => i.status === "open");
   const pasesActivos = state.tokens.filter((t) => ["active", "scheduled"].includes(store.effectiveStatus(t))).length;
   const fechaLarga = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
-
-  // compositor de comunicados
-  const [audience, setAudience] = useState<"family" | "teacher">("family");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [sent, setSent] = useState(false);
-  function enviar() {
-    if (!title.trim()) return;
-    store.sendAnnouncement(audience, title.trim(), body.trim());
-    setTitle(""); setBody(""); setSent(true);
-    setTimeout(() => setSent(false), 2500);
-  }
 
   return (
     <div className="grid">
@@ -135,32 +124,7 @@ export function Directivo() {
       </section>
       </>}
 
-      {view === "comunicado" && <>
-      <section className="card span2">
-        <h2>📣 Enviar comunicado</h2>
-        <p className="muted small">Comunicate con las familias o el equipo docente. Les llega como notificación.</p>
-        <div className="row gap wrap">
-          <div>
-            <label htmlFor="com-aud">Para</label>
-            <select id="com-aud" value={audience} onChange={(e) => setAudience(e.target.value as any)}>
-              <option value="family">👨‍👩‍👧 Familias</option>
-              <option value="teacher">🧑‍🏫 Docentes</option>
-            </select>
-          </div>
-          <div className="grow">
-            <label htmlFor="com-title">Título</label>
-            <input id="com-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Acto del 9 de Julio" />
-          </div>
-        </div>
-        <label htmlFor="com-body">Mensaje</label>
-        <input id="com-body" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escribí el aviso…" />
-        <div className="row gap" style={{ marginTop: 12 }}>
-          <button className="primary" onClick={enviar}>Enviar comunicado</button>
-          {sent && <span className="pill active">✓ Enviado</span>}
-        </div>
-      </section>
-      <ComunicadosEnviados />
-      </>}
+      {view === "comunicado" && <Comunicados />}
 
       {view === "agenda" && <Agenda />}
       {view === "mensajes" && <Messages />}
@@ -269,71 +233,5 @@ export function Directivo() {
       </section>
       </>}
     </div>
-  );
-}
-
-function ComunicadosEnviados() {
-  useStore();
-  const list = store.announcements();
-  const [editId, setEditId] = useState<string | null>(null);
-  const [eTitle, setETitle] = useState("");
-  const [eBody, setEBody] = useState("");
-  const [eAud, setEAud] = useState<"family" | "teacher">("family");
-
-  function startEdit(id: string, title: string, body: string, aud: "family" | "teacher") {
-    setEditId(id); setETitle(title); setEBody(body); setEAud(aud);
-  }
-  function saveEdit() {
-    if (!editId || !eTitle.trim()) return;
-    store.updateAnnouncement(editId, { title: eTitle.trim(), body: eBody.trim(), audienceRole: eAud });
-    setEditId(null);
-  }
-
-  return (
-    <section className="card span2">
-      <h2>🗂️ Comunicados enviados</h2>
-      <p className="muted small">Editá o eliminá comunicados ya publicados. Los cambios se reflejan en las notificaciones de las familias y docentes.</p>
-      {list.length === 0 && <p className="muted">Todavía no enviaste comunicados.</p>}
-      <div className="agenda-list">
-        {list.map((n) => {
-          const aud = n.audienceRole === "teacher" ? "teacher" : "family";
-          if (editId === n.id) {
-            return (
-              <div key={n.id} className="event-form">
-                <div className="row gap wrap">
-                  <div>
-                    <label htmlFor={`ce-aud-${n.id}`}>Para</label>
-                    <select id={`ce-aud-${n.id}`} value={eAud} onChange={(e) => setEAud(e.target.value as "family" | "teacher")}>
-                      <option value="family">👨‍👩‍👧 Familias</option>
-                      <option value="teacher">🧑‍🏫 Docentes</option>
-                    </select>
-                  </div>
-                  <div className="grow"><label htmlFor={`ce-title-${n.id}`}>Título</label><input id={`ce-title-${n.id}`} value={eTitle} onChange={(e) => setETitle(e.target.value)} /></div>
-                </div>
-                <label htmlFor={`ce-body-${n.id}`}>Mensaje</label>
-                <input id={`ce-body-${n.id}`} value={eBody} onChange={(e) => setEBody(e.target.value)} />
-                <div className="row gap" style={{ marginTop: 12 }}>
-                  <button className="primary" onClick={saveEdit}>Guardar cambios</button>
-                  <button className="ghost" onClick={() => setEditId(null)}>Cancelar</button>
-                </div>
-              </div>
-            );
-          }
-          return (
-            <div key={n.id} className="list-row">
-              <div>
-                <b>{n.title}</b> <span className="pill">{aud === "teacher" ? "Docentes" : "Familias"}</span>
-                <div className="muted small">{n.body}</div>
-                <div className="muted small">{new Date(n.timestamp).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
-              </div>
-              <div className="agenda-admin">
-                <button className="ghost small-btn" onClick={() => startEdit(n.id, n.title, n.body, aud)}>✏️ Editar</button>
-                <button className="ghost small-btn danger" onClick={() => { if (confirm(`¿Eliminar el comunicado "${n.title}"?`)) store.deleteAnnouncement(n.id); }}>🗑️ Eliminar</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
   );
 }
