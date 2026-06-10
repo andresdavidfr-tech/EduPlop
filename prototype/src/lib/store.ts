@@ -6,9 +6,9 @@ import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
   Settings, AuditEventType, TokenStatus, Notification, User,
   Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
-  Guardian, Guardianship, Sala, Turno, MuralPost, MuralMedia,
+  Guardian, Guardianship, Sala, Turno, MuralPost, MuralMedia, Student, Teacher,
 } from "./types";
-import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, MURAL_POSTS, type DemoAccount } from "./seed";
+import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, TEACHERS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, MURAL_POSTS, type DemoAccount } from "./seed";
 import { SYNC_ENABLED, pullShared, pushShared } from "./sync";
 import * as auth from "./auth";
 import type { AuthSession, Profile } from "./auth";
@@ -34,6 +34,8 @@ interface State {
   notifPrefs: NotifPrefs;
   customGuardians: Guardian[]; // autorizados dados de alta por las familias
   customGuardianships: Guardianship[];
+  customStudents: Student[]; // matrícula dada de alta por Dirección
+  customTeachers: Teacher[]; // nómina dada de alta por Dirección
   // --- Administración del establecimiento (editable por Dirección) ---
   salas: Sala[];
   studentSala: Record<string, string>; // studentId → salaId
@@ -50,6 +52,7 @@ const SHARED_KEYS: (keyof State)[] = [
   "tokens", "receipts", "ledger", "incidents", "settings", "revokedGuardians",
   "consumedJtis", "notifications", "conversations", "agenda", "customGuardians",
   "customGuardianships", "salas", "studentSala", "teacherTasks", "muralPosts",
+  "customStudents", "customTeachers",
 ];
 
 function pickShared(s: State): Record<string, unknown> {
@@ -98,9 +101,11 @@ function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unkno
   const customGuardianships = unionBy(a.customGuardianships ?? [], b.customGuardianships ?? [],
     (g) => `${g.guardianId}|${g.studentId}`);
   const salas = unionBy(a.salas ?? [], b.salas ?? [], (s) => s.id);
+  const customStudents = unionBy(a.customStudents ?? [], b.customStudents ?? [], (s) => s.id);
+  const customTeachers = unionBy(a.customTeachers ?? [], b.customTeachers ?? [], (t) => t.id);
   return {
     tokens, receipts, ledger, incidents, notifications, conversations, agenda, muralPosts,
-    customGuardians, customGuardianships, salas,
+    customGuardians, customGuardianships, salas, customStudents, customTeachers,
     revokedGuardians: uniq(a.revokedGuardians, b.revokedGuardians),
     consumedJtis: uniq(a.consumedJtis, b.consumedJtis),
     settings: { ...(a.settings ?? {}), ...(b.settings ?? {}) },
@@ -183,6 +188,8 @@ function freshState(): State {
     notifPrefs: { pickup: true, message: true, agenda: true, announcement: true },
     customGuardians: [],
     customGuardianships: [],
+    customStudents: [],
+    customTeachers: [],
     salas: SALAS.map((s) => ({ ...s })),
     studentSala: { ...STUDENT_SALA },
     teacherTasks: { ...TEACHER_TASKS },
@@ -423,10 +430,12 @@ class Store {
     }
     const base = profile ? this.profileToUser(profile)
       : { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId };
-    // Garantizamos los datos de la cuenta demo (rol y entidad vinculada) aunque
-    // el perfil remoto esté incompleto: así la familia resuelve siempre su sala.
+    // Las cuentas demo usan un username ESTABLE ("familia"/"docente"/"direccion")
+    // que coincide con los datos semilla (hilos, RSVPs, likes…), y conservan su
+    // rol/entidad aunque el perfil remoto esté incompleto.
     this.setAuth("authed", {
       ...base,
+      username: acc.username,
       role: base.role ?? acc.role,
       guardianId: base.guardianId ?? acc.guardianId,
       teacherId: base.teacherId ?? acc.teacherId,
@@ -580,7 +589,7 @@ class Store {
   private notifyFamilyOfPickup(studentId: string, authorizedId: string, mode: string) {
     const link = this.guardianships().find((g) => g.studentId === studentId && g.role === "primary_guardian");
     const famUser = USERS.find((u) => u.role === "family" && u.guardianId === link?.guardianId);
-    const student = STUDENTS.find((s) => s.id === studentId);
+    const student = this.studentById(studentId);
     const who = this.guardianById(authorizedId);
     const target = famUser ? { audienceUser: famUser.username } : { audienceRole: "family" as const };
     const now = new Date();
@@ -597,6 +606,42 @@ class Store {
   }
 
   // --- ADMINISTRACIÓN DEL ESTABLECIMIENTO (Dirección) ---
+  /** Matrícula completa: alumnos semilla + altas de Dirección. */
+  students(): Student[] { return [...STUDENTS, ...this.state.customStudents]; }
+  studentById(id: string): Student | undefined { return this.students().find((s) => s.id === id); }
+  /** Nómina completa: docentes semilla + altas de Dirección. */
+  teachers(): Teacher[] { return [...TEACHERS, ...this.state.customTeachers]; }
+  /** Alta de alumno/a en la matrícula (Dirección). */
+  addStudent(input: { name: string; document: string; emoji?: string; salaId?: string }): Student | null {
+    if (!this.isDirector() || !input.name.trim()) return null;
+    const sala = input.salaId ? this.salaById(input.salaId) : undefined;
+    const stu: Student = {
+      id: ulid("stu_"), name: input.name.trim(), document: input.document.trim(),
+      classroom: sala?.name ?? "Sin asignar", emoji: input.emoji?.trim() || "🧒",
+    };
+    const patch: Partial<State> = { customStudents: [...this.state.customStudents, stu] };
+    if (input.salaId) patch.studentSala = { ...this.state.studentSala, [stu.id]: input.salaId };
+    this.commit(patch);
+    return stu;
+  }
+  /** Baja de un alumno/a dado de alta por Dirección (no toca los semilla). */
+  deleteStudent(id: string) {
+    if (!this.isDirector()) return;
+    const { [id]: _omit, ...studentSala } = this.state.studentSala;
+    this.commit({ customStudents: this.state.customStudents.filter((s) => s.id !== id), studentSala });
+  }
+  /** Alta de docente en la nómina (Dirección). */
+  addTeacher(input: { name: string }): Teacher | null {
+    if (!this.isDirector() || !input.name.trim()) return null;
+    const t: Teacher = { id: ulid("teacher_"), name: input.name.trim() };
+    this.commit({ customTeachers: [...this.state.customTeachers, t] });
+    return t;
+  }
+  /** Baja de un docente dado de alta por Dirección (no toca los semilla). */
+  deleteTeacher(id: string) {
+    if (!this.isDirector()) return;
+    this.commit({ customTeachers: this.state.customTeachers.filter((t) => t.id !== id) });
+  }
   salas(): Sala[] { return this.state.salas; }
   salaById(id: string): Sala | undefined { return this.state.salas.find((s) => s.id === id); }
   /** Sala asignada a un alumno (o la de su classroom semilla como respaldo). */
@@ -607,14 +652,14 @@ class Store {
   /** Nombre de sala/curso de un alumno para mostrar (admin tiene prioridad). */
   studentClassroom(studentId: string): string {
     return this.salaOfStudent(studentId)?.name
-      ?? STUDENTS.find((s) => s.id === studentId)?.classroom
+      ?? this.studentById(studentId)?.classroom
       ?? "—";
   }
   salaOfTeacher(teacherId: string): Sala | undefined {
     return this.state.salas.find((s) => s.teacherId === teacherId);
   }
-  studentsOfSala(salaId: string): typeof STUDENTS {
-    return STUDENTS.filter((s) => this.state.studentSala[s.id] === salaId);
+  studentsOfSala(salaId: string): Student[] {
+    return this.students().filter((s) => this.state.studentSala[s.id] === salaId);
   }
   teacherTasksOf(teacherId: string): string { return this.state.teacherTasks[teacherId] ?? ""; }
 
@@ -691,10 +736,32 @@ class Store {
   }
   conversationsFor(user: User | null): Conversation[] {
     if (!user) return [];
-    const list = user.role === "family"
-      ? this.state.conversations.filter((c) => c.familyUser === user.username)
-      : this.state.conversations; // colegio ve todas
+    let list: Conversation[];
+    if (user.role === "family") {
+      // La familia ve los hilos propios y los que el colegio abrió por sus hijos/as.
+      const myStudentIds = this.guardianships().filter((g) => g.guardianId === user.guardianId).map((g) => g.studentId);
+      list = this.state.conversations.filter((c) => c.familyUser === user.username || (!!c.studentId && myStudentIds.includes(c.studentId)));
+    } else {
+      list = this.state.conversations; // colegio ve todas
+    }
     return [...list].sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+  /** El colegio (docente/dirección) abre un hilo hacia la familia de un alumno/a. */
+  startSchoolThread(studentId: string, subject: string, body: string, category: MessageCategory = "general"): Conversation | null {
+    const u = this.currentUser();
+    if (!u || u.role === "family" || !subject.trim()) return null;
+    const link = this.guardianships().find((g) => g.studentId === studentId && g.role === "primary_guardian");
+    const famUser = USERS.find((x) => x.role === "family" && x.guardianId === link?.guardianId)?.username ?? "";
+    const conv: Conversation = {
+      id: ulid("CONV_"), familyUser: famUser, studentId, category, subject: subject.trim(),
+      messages: [{ from: u.username, fromName: u.name, body: body.trim(), ts: Date.now() }],
+      status: "answered", updatedAt: Date.now(), readBy: [u.username],
+    };
+    this.commit({ conversations: [conv, ...this.state.conversations] });
+    if (famUser) {
+      this.pushNotification({ audienceUser: famUser, kind: "message", title: `💬 Mensaje del colegio`, body: `${conv.subject}: ${body.slice(0, 60)}` });
+    }
+    return conv;
   }
 
   // --- AGENDA interactiva ---

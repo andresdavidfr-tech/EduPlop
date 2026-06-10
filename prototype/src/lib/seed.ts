@@ -1,4 +1,4 @@
-import type { Student, Guardian, Guardianship, User, Sala, MuralPost } from "./types";
+import type { Student, Guardian, Guardianship, User, Sala, MuralPost, Teacher } from "./types";
 
 export const INSTITUTION = { id: "inst_8842", name: "Colegio San Martín" };
 
@@ -24,7 +24,7 @@ export const GUARDIANSHIPS: Guardianship[] = [
   { guardianId: "guar_030", studentId: "stu_004", role: "primary_guardian" },
 ];
 
-export const TEACHERS = [
+export const TEACHERS: Teacher[] = [
   { id: "teacher_119", name: "Doc. Pérez", classroom: "Sala Verde" },
   { id: "teacher_204", name: "Doc. Acosta", classroom: "1° A" },
 ];
@@ -60,6 +60,7 @@ export const USERS: User[] = [
  */
 export interface DemoAccount {
   email: string;
+  username: string; // username estable que usa la app (coincide con los datos semilla)
   password: string;
   role: User["role"];
   name: string;
@@ -67,9 +68,9 @@ export interface DemoAccount {
   teacherId?: string;
 }
 export const DEMO_ACCOUNTS: DemoAccount[] = [
-  { email: "familia@eduplop.demo", password: "familia123", role: "family", name: "Laura Fernández", guardianId: "guar_010" },
-  { email: "docente@eduplop.demo", password: "docente123", role: "teacher", name: "Doc. Pérez", teacherId: "teacher_119" },
-  { email: "direccion@eduplop.demo", password: "direccion123", role: "director", name: "Dirección — Colegio San Martín" },
+  { email: "familia@eduplop.demo", username: "familia", password: "familia123", role: "family", name: "Laura Fernández", guardianId: "guar_010" },
+  { email: "docente@eduplop.demo", username: "docente", password: "docente123", role: "teacher", name: "Doc. Pérez", teacherId: "teacher_119" },
+  { email: "direccion@eduplop.demo", username: "direccion", password: "direccion123", role: "director", name: "Dirección — Colegio San Martín" },
 ];
 
 export const ROLE_MODULES: Record<string, ("familias" | "docentes" | "directivo")[]> = {
