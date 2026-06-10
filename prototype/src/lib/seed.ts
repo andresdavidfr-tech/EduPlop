@@ -1,4 +1,4 @@
-import type { Student, Guardian, Guardianship, User, Sala } from "./types";
+import type { Student, Guardian, Guardianship, User, Sala, MuralPost } from "./types";
 
 export const INSTITUTION = { id: "inst_8842", name: "Colegio San Martín" };
 
@@ -54,6 +54,24 @@ export const USERS: User[] = [
   { username: "direccion", password: "direccion123", role: "director", name: "Dirección — Colegio San Martín" },
 ];
 
+/**
+ * Cuentas demo para Supabase Auth (auth real). La primera vez se autoaprovisionan
+ * (signup + perfil); luego es solo login. En producción las crea la escuela.
+ */
+export interface DemoAccount {
+  email: string;
+  password: string;
+  role: User["role"];
+  name: string;
+  guardianId?: string;
+  teacherId?: string;
+}
+export const DEMO_ACCOUNTS: DemoAccount[] = [
+  { email: "familia@eduplop.demo", password: "familia123", role: "family", name: "Laura Fernández", guardianId: "guar_010" },
+  { email: "docente@eduplop.demo", password: "docente123", role: "teacher", name: "Doc. Pérez", teacherId: "teacher_119" },
+  { email: "direccion@eduplop.demo", password: "direccion123", role: "director", name: "Dirección — Colegio San Martín" },
+];
+
 export const ROLE_MODULES: Record<string, ("familias" | "docentes" | "directivo")[]> = {
   family: ["familias"],
   teacher: ["docentes"],
@@ -65,3 +83,36 @@ export const ROLE_LABEL: Record<string, string> = {
   teacher: "Docente",
   director: "Dirección",
 };
+
+// Fotos de muestra para el Mural (placeholders estables de Picsum).
+const photo = (seed: string, n = 1) =>
+  Array.from({ length: n }, (_, i) => `https://picsum.photos/seed/eduplop-${seed}-${i}/640/640`);
+
+const HOUR = 3600000;
+
+// Feed inicial del Mural: novedades publicadas por los docentes.
+export const MURAL_POSTS: MuralPost[] = [
+  {
+    id: "post_001", authorName: "Seño Carla", authorAvatar: "👩‍🏫", salaId: "sala_verde", salaName: "Sala Verde",
+    text: "¡Hoy plantamos en la huerta! 🌱 Cada peque cuidó su semillita. Gracias por mandar los delantales.",
+    images: photo("huerta", 5), ts: Date.now() - 2 * HOUR,
+    likedBy: ["direccion"],
+    comments: [
+      { id: "cm_1", fromUser: "direccion", fromName: "Dirección", body: "¡Hermosa actividad! 👏", ts: Date.now() - 1.5 * HOUR },
+    ],
+  },
+  {
+    id: "post_002", authorName: "Profe Martín", authorAvatar: "🧑‍🏫", salaId: "sala_1a", salaName: "1° A",
+    text: "Cierre del proyecto de animales 🦁🐘. Quedaron geniales las maquetas. ¡Aplausos para todos!",
+    images: photo("animales", 3), ts: Date.now() - 26 * HOUR,
+    likedBy: [],
+    comments: [],
+  },
+  {
+    id: "post_003", authorName: "Dirección — Colegio San Martín", authorAvatar: "🏫",
+    text: "📢 Reunión general de familias el próximo jueves a las 18 h en el SUM. ¡Los esperamos a todos!",
+    images: photo("reunion", 1), ts: Date.now() - 3 * 24 * HOUR,
+    likedBy: ["direccion"],
+    comments: [],
+  },
+];

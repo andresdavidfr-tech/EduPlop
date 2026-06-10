@@ -25,6 +25,9 @@ export function App() {
   const state = useStore();
   const user = store.currentUser();
 
+  if (state.authStatus === "loading") {
+    return <div className="route-loading" role="status" aria-live="polite"><span className="spinner" aria-hidden="true" /> Cargando sesión…</div>;
+  }
   if (!user) return <Login />;
 
   const allowed = (ROLE_MODULES[user.role] ?? []) as Tab[];

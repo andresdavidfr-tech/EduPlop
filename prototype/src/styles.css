@@ -451,3 +451,113 @@ button:not(:disabled):active { transform: translateY(0) scale(.96); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
+
+/* ===== Mural: feed de novedades ===== */
+textarea {
+  width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  font-size: 15px; background: var(--field-bg); color: var(--ink); font-family: inherit;
+  resize: vertical; min-height: 84px; line-height: 1.45;
+}
+textarea:focus { border-color: var(--brand); outline: none; }
+
+.mural-post { padding: 16px 18px; }
+.mural-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.mural-head b { display: block; line-height: 1.2; }
+.mural-head small { display: block; }
+.mural-av { width: 44px; height: 44px; flex: none; border-radius: 50%; }
+.mural-av.emoji {
+  display: inline-flex; align-items: center; justify-content: center; font-size: 26px;
+  background: var(--soft); border: 1px solid var(--line);
+}
+.mural-text { margin: 10px 0 0; line-height: 1.5; white-space: pre-wrap; }
+
+.mural-photos {
+  display: grid; gap: 6px; margin-top: 12px;
+  border-radius: var(--radius-md); overflow: hidden;
+}
+.mural-photos.n1 { grid-template-columns: 1fr; }
+.mural-photos.n2 { grid-template-columns: 1fr 1fr; }
+.mural-photos.n3 { grid-template-columns: 1.4fr 1fr; }
+.mural-photos.n3 .mural-photo:first-child { grid-row: span 2; }
+.mural-photos.n4 { grid-template-columns: 1fr 1fr; }
+.mural-photo {
+  position: relative; border: none; padding: 0; margin: 0; cursor: pointer;
+  background: var(--soft); overflow: hidden; aspect-ratio: 1 / 1;
+}
+.mural-photos.n1 .mural-photo { aspect-ratio: 4 / 3; max-height: 460px; }
+.mural-photos.n3 .mural-photo:first-child { aspect-ratio: auto; }
+.mural-photo img, .mural-photo video { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s ease; }
+.mural-photo:hover img, .mural-photo:hover video { transform: scale(1.04); }
+.mural-more {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 23, 42, .55); color: #fff; font-weight: 700; font-size: 22px; letter-spacing: .3px;
+}
+.mural-play {
+  position: absolute; inset: 0; margin: auto; width: 54px; height: 54px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+  background: rgba(15, 23, 42, .5); color: #fff; font-size: 20px; padding-left: 4px;
+}
+.mural-play.sm { width: 28px; height: 28px; font-size: 11px; padding-left: 2px; }
+
+.mural-actions { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.like-btn {
+  display: inline-flex; align-items: center; gap: 7px; background: var(--soft); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px; padding: 8px 15px; min-height: 40px;
+  cursor: pointer; font-weight: 600; font-size: 14px; transition: background .15s, border-color .15s, transform .1s;
+}
+.like-btn:hover { background: #e7ebf3; }
+.like-btn:active { transform: scale(.96); }
+.like-btn.liked { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+@media (prefers-color-scheme: dark) {
+  .like-btn.liked { background: rgba(239, 68, 68, .18); border-color: rgba(239, 68, 68, .4); color: #fca5a5; }
+}
+
+.mural-comments { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.mural-comments li { font-size: 14px; line-height: 1.4; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mural-comments li em { font-style: normal; font-size: 12px; }
+.cmt-x { flex: none; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 6px; }
+.cmt-x:hover { color: var(--bad); background: var(--soft); }
+
+.mural-manage { display: flex; gap: 6px; flex: none; }
+@media (max-width: 520px) {
+  .mural-head { flex-wrap: wrap; }
+  .mural-manage { width: 100%; }
+}
+
+.mural-add-comment { display: flex; gap: 8px; margin-top: 12px; }
+.mural-add-comment input { flex: 1 1 auto; }
+.mural-add-comment .ghost { flex: none; }
+
+/* Composer: miniaturas adjuntas */
+.mural-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.mural-thumb { position: relative; width: 74px; height: 74px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--line); }
+.mural-thumb img, .mural-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mural-thumb-x {
+  position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border: none; border-radius: 50%;
+  background: rgba(15, 23, 42, .65); color: #fff; cursor: pointer; font-size: 12px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Lightbox */
+.lightbox {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(8, 11, 22, .9);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  animation: fadeInUp .2s ease both;
+}
+.lb-img { max-width: 94vw; max-height: 86vh; border-radius: var(--radius-md); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); }
+.lb-close {
+  position: absolute; top: 16px; right: 18px; width: 44px; height: 44px; border-radius: 50%;
+  border: none; background: rgba(255, 255, 255, .12); color: #fff; font-size: 20px; cursor: pointer;
+}
+.lb-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%;
+  border: none; background: rgba(255, 255, 255, .12); color: #fff; font-size: 30px; line-height: 1; cursor: pointer;
+}
+.lb-prev { left: 14px; } .lb-next { right: 14px; }
+.lb-close:hover, .lb-nav:hover { background: rgba(255, 255, 255, .25); }
+.lb-count { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 14px; background: rgba(0,0,0,.4); padding: 4px 12px; border-radius: 999px; }
+
+@media (max-width: 820px) {
+  .mural-photos.n1 .mural-photo { aspect-ratio: 4 / 3; max-height: 320px; }
+  .lb-nav { width: 40px; height: 40px; font-size: 24px; }
+}

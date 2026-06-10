@@ -135,9 +135,11 @@ export interface Notification {
   id: string;
   audienceRole?: Role; // destinatario por rol (p. ej. comunicado a familias)
   audienceUser?: string; // destinatario puntual (username)
+  audienceSala?: string; // segmenta a las familias de una sala (salaId)
   kind: "pickup" | "announcement" | "alert" | "message" | "agenda";
   title: string;
   body: string;
+  createdBy?: string; // username de quien lo creó (comunicados)
   timestamp: number;
   readBy: string[]; // usernames que ya la leyeron
 }
@@ -186,4 +188,33 @@ export interface NotifPrefs {
   message: boolean;
   agenda: boolean;
   announcement: boolean;
+}
+
+// --- Mural: feed de fotos/novedades publicado por los docentes ---
+export interface MuralComment {
+  id: string;
+  fromUser: string; // username del autor del comentario
+  fromName: string;
+  body: string;
+  ts: number;
+}
+
+export interface MuralMedia {
+  kind: "image" | "video";
+  url: string;
+}
+
+export interface MuralPost {
+  id: string;
+  authorName: string; // docente que publica
+  authorUser?: string; // username del autor (para permisos de edición)
+  authorAvatar: string; // emoji o URL de avatar
+  salaId?: string; // sala destino (vacío = visible para toda la escuela)
+  salaName?: string; // nombre de la sala (derivado, para mostrar)
+  text: string;
+  images: string[]; // URLs de las fotos (legado; ver `media`)
+  media?: MuralMedia[]; // fotos y videos de la publicación
+  ts: number;
+  likedBy: string[]; // usernames que dieron "me gusta"
+  comments: MuralComment[];
 }

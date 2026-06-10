@@ -6,10 +6,12 @@ import type {
   AuthorizationToken, TokenClaims, PickupReceipt, AuditEvent, Incident,
   Settings, AuditEventType, TokenStatus, Notification, User,
   Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
-  Guardian, Guardianship, Sala, Turno,
+  Guardian, Guardianship, Sala, Turno, MuralPost, MuralMedia,
 } from "./types";
-import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS } from "./seed";
+import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, MURAL_POSTS, type DemoAccount } from "./seed";
 import { SYNC_ENABLED, pullShared, pushShared } from "./sync";
+import * as auth from "./auth";
+import type { AuthSession, Profile } from "./auth";
 
 interface State {
   institutionKey: KeyPair;
@@ -22,10 +24,12 @@ interface State {
   consumedLocally: string[]; // jti consumidos en el dispositivo (anti-reuso offline)
   consumedJtis: string[]; // jti efectivamente retirados (compartido entre dispositivos)
   revokedGuardians: string[]; // lista de revocación (cacheable offline)
-  session: string | null; // username logueado
+  authStatus: "loading" | "anon" | "authed"; // estado de la sesión (local)
+  authUser: User | null; // usuario autenticado (local)
   notifications: Notification[];
   conversations: Conversation[];
   agenda: AgendaEvent[];
+  muralPosts: MuralPost[]; // feed de novedades del Mural
   pushEnabled: boolean;
   notifPrefs: NotifPrefs;
   customGuardians: Guardian[]; // autorizados dados de alta por las familias
@@ -45,7 +49,7 @@ const LS_KEY = "eduplop-state-v3";
 const SHARED_KEYS: (keyof State)[] = [
   "tokens", "receipts", "ledger", "incidents", "settings", "revokedGuardians",
   "consumedJtis", "notifications", "conversations", "agenda", "customGuardians",
-  "customGuardianships", "salas", "studentSala", "teacherTasks",
+  "customGuardianships", "salas", "studentSala", "teacherTasks", "muralPosts",
 ];
 
 function pickShared(s: State): Record<string, unknown> {
@@ -83,13 +87,19 @@ function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unkno
   const conversations = unionBy(a.conversations ?? [], b.conversations ?? [], (c) => c.id,
     (x, y) => (y.updatedAt >= x.updatedAt ? y : x));
   const agenda = unionBy(a.agenda ?? [], b.agenda ?? [], (e) => e.id);
+  const muralPosts = unionBy(a.muralPosts ?? [], b.muralPosts ?? [], (p) => p.id,
+    (x, y) => ({
+      ...y,
+      likedBy: uniq(x.likedBy, y.likedBy),
+      comments: unionBy(x.comments ?? [], y.comments ?? [], (c) => c.id),
+    }));
   const customGuardians = unionBy(a.customGuardians ?? [], b.customGuardians ?? [], (g) => g.id,
     (x, y) => (y.photo ? y : x)); // preferimos la versión que trae foto
   const customGuardianships = unionBy(a.customGuardianships ?? [], b.customGuardianships ?? [],
     (g) => `${g.guardianId}|${g.studentId}`);
   const salas = unionBy(a.salas ?? [], b.salas ?? [], (s) => s.id);
   return {
-    tokens, receipts, ledger, incidents, notifications, conversations, agenda,
+    tokens, receipts, ledger, incidents, notifications, conversations, agenda, muralPosts,
     customGuardians, customGuardianships, salas,
     revokedGuardians: uniq(a.revokedGuardians, b.revokedGuardians),
     consumedJtis: uniq(a.consumedJtis, b.consumedJtis),
@@ -136,7 +146,8 @@ function freshState(): State {
     consumedLocally: [],
     consumedJtis: [],
     revokedGuardians: [],
-    session: null,
+    authStatus: SYNC_ENABLED ? "loading" : "anon",
+    authUser: null,
     notifications: [
       {
         id: "n_welcome", audienceRole: "family", kind: "announcement",
@@ -167,6 +178,7 @@ function freshState(): State {
       { id: "a_acto", title: "Acto del 9 de Julio", description: "Vengan con escarapela. Patio central.", date: todayPlus(10), time: "10:00", type: "acto", audienceRole: "all", createdBy: "direccion", rsvps: {} },
       { id: "a_salida", title: "Salida didáctica al museo", description: "Traer autorización y vianda.", date: todayPlus(17), time: "09:00", type: "salida", audienceRole: "family", createdBy: "docente", rsvps: {} },
     ],
+    muralPosts: MURAL_POSTS.map((p) => ({ ...p, images: [...p.images], likedBy: [...p.likedBy], comments: p.comments.map((c) => ({ ...c })) })),
     pushEnabled: false,
     notifPrefs: { pickup: true, message: true, agenda: true, announcement: true },
     customGuardians: [],
@@ -200,6 +212,8 @@ function hydrate(raw: string | null): State {
       institutionKey: base.institutionKey,
       syncStatus: base.syncStatus, // estado en vivo, no el persistido
       syncDetail: "",
+      authStatus: base.authStatus, // la sesión se restaura desde los tokens
+      authUser: null,
       settings: { ...base.settings, ...(saved.settings ?? {}) },
       notifPrefs: { ...base.notifPrefs, ...(saved.notifPrefs ?? {}) },
     };
@@ -220,6 +234,7 @@ class Store {
   constructor() {
     this.state = hydrate(safeStorage.get(LS_KEY));
     if (SYNC_ENABLED) this.initSync();
+    this.initAuth();
   }
 
   // --- React glue ---
@@ -327,16 +342,95 @@ class Store {
 
   get institutionPub() { return this.state.institutionKey.pub; }
 
-  // --- AUTENTICACIÓN (demo client-side) ---
-  login(username: string, password: string): { ok: boolean; reason?: string } {
-    const u = USERS.find((x) => x.username === username.trim().toLowerCase() && x.password === password);
-    if (!u) return { ok: false, reason: "Usuario o contraseña incorrectos" };
-    this.commit({ session: u.username });
+  // --- AUTENTICACIÓN ---
+  currentUser(): User | null { return this.state.authUser; }
+  private setAuth(status: State["authStatus"], user: User | null) {
+    this.state = { ...this.state, authStatus: status, authUser: user };
+    safeStorage.set(LS_KEY, JSON.stringify(this.state));
+    this.listeners.forEach((l) => l());
+  }
+  private profileToUser(p: Profile): User {
+    return {
+      username: p.email ?? p.id, password: "",
+      role: (p.role as User["role"]) ?? "family",
+      name: p.name ?? p.email ?? "Usuario",
+      guardianId: p.guardian_id ?? undefined,
+      teacherId: p.teacher_id ?? undefined,
+    };
+  }
+
+  /** Restaura la sesión al iniciar (Supabase Auth). */
+  private async initAuth() {
+    if (!SYNC_ENABLED) { this.setAuth("anon", null); return; }
+    let session = auth.loadStoredSession();
+    if (!session) { this.setAuth("anon", null); return; }
+    // valida el access token; si venció, intenta refrescar
+    let ok = await auth.getAuthUser(session.access_token);
+    if (!ok) {
+      const refreshed = await auth.refreshSession(session.refresh_token);
+      if (refreshed) { session = refreshed; auth.storeSession(session); ok = refreshed.user; }
+    }
+    if (!ok) { auth.storeSession(null); this.setAuth("anon", null); return; }
+    const profile = await auth.getProfile(session);
+    if (!profile) { this.setAuth("anon", null); return; }
+    this.setAuth("authed", this.profileToUser(profile));
+  }
+
+  /** Login con email + contraseña (cuentas creadas por la escuela). */
+  async loginWithPassword(email: string, password: string): Promise<{ ok: boolean; reason?: string }> {
+    if (!SYNC_ENABLED) {
+      // Fallback sin Supabase: cuentas demo locales (por usuario o email).
+      const u = USERS.find((x) => x.username === email.trim().toLowerCase().split("@")[0] && x.password === password);
+      if (!u) return { ok: false, reason: "Usuario o contraseña incorrectos" };
+      this.setAuth("authed", u);
+      return { ok: true };
+    }
+    const { session, error } = await auth.signIn(email.trim().toLowerCase(), password);
+    if (!session) return { ok: false, reason: error ?? "No se pudo iniciar sesión" };
+    auth.storeSession(session);
+    const profile = await auth.getProfile(session);
+    if (!profile) return { ok: false, reason: "Tu cuenta no tiene un perfil asignado. Contactá a la escuela." };
+    this.setAuth("authed", this.profileToUser(profile));
     return { ok: true };
   }
-  logout() { this.commit({ session: null }); }
-  currentUser(): User | null {
-    return USERS.find((u) => u.username === this.state.session) ?? null;
+
+  /** Entra con una cuenta demo: la autoaprovisiona (signup + perfil) la primera vez. */
+  async loginDemo(acc: DemoAccount): Promise<{ ok: boolean; reason?: string }> {
+    if (!SYNC_ENABLED) {
+      this.setAuth("authed", { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId });
+      return { ok: true };
+    }
+    let session: AuthSession | undefined = (await auth.signIn(acc.email, acc.password)).session;
+    if (!session) session = (await auth.signUp(acc.email, acc.password)).session; // primera vez
+    if (!session) {
+      // si el signup falló por existir, reintenta login
+      session = (await auth.signIn(acc.email, acc.password)).session;
+    }
+    if (!session) {
+      // Red de seguridad: si Supabase Auth no está disponible/configurado
+      // (p. ej. falta desactivar "Confirm email"), igual dejamos entrar a la
+      // cuenta demo de forma local para no bloquear la app.
+      this.setAuth("authed", { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId });
+      return { ok: true };
+    }
+    auth.storeSession(session);
+    let profile = await auth.getProfile(session);
+    if (!profile) {
+      profile = await auth.upsertProfile(session, {
+        email: acc.email, name: acc.name, role: acc.role,
+        guardian_id: acc.guardianId ?? null, teacher_id: acc.teacherId ?? null,
+      });
+    }
+    this.setAuth("authed", profile ? this.profileToUser(profile)
+      : { username: acc.email, password: "", role: acc.role, name: acc.name, guardianId: acc.guardianId, teacherId: acc.teacherId });
+    return { ok: true };
+  }
+
+  async logout() {
+    const s = auth.loadStoredSession();
+    if (s) await auth.signOut(s.access_token);
+    auth.storeSession(null);
+    this.setAuth("anon", null);
   }
 
   // --- NOTIFICACIONES / COMUNICACIÓN ---
@@ -370,14 +464,55 @@ class Store {
       new Notification(title, { body, icon: undefined, tag: ulid() });
     } catch { /* noop */ }
   }
-  sendAnnouncement(audienceRole: "family" | "teacher", title: string, body: string) {
-    this.pushNotification({ audienceRole, kind: "announcement", title, body });
+  sendAnnouncement(audienceRole: "family" | "teacher", title: string, body: string, salaId?: string) {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return; // solo el colegio publica comunicados
+    this.pushNotification({ audienceRole, kind: "announcement", title, body, createdBy: u.username, audienceSala: salaId || undefined });
+  }
+  /** Comunicados enviados (notificaciones tipo announcement), del más nuevo al más viejo. */
+  announcements(): Notification[] {
+    return this.state.notifications
+      .filter((n) => n.kind === "announcement")
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }
+  /** ¿El usuario actual puede editar/borrar este comunicado? (autor o dirección) */
+  canManageAnnouncement(n: Notification): boolean {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return false;
+    return u.role === "director" || n.createdBy === u.username;
+  }
+  /** Edita un comunicado ya enviado (autor o dirección). */
+  updateAnnouncement(id: string, patch: { title: string; body: string; audienceRole?: "family" | "teacher"; audienceSala?: string }) {
+    const n = this.state.notifications.find((x) => x.id === id && x.kind === "announcement");
+    if (!n || !this.canManageAnnouncement(n)) return;
+    this.commit({
+      notifications: this.state.notifications.map((x) =>
+        x.id === id && x.kind === "announcement"
+          ? { ...x, title: patch.title.trim(), body: patch.body.trim(),
+              audienceRole: patch.audienceRole ?? x.audienceRole,
+              audienceSala: patch.audienceSala || undefined }
+          : x),
+    });
+  }
+  /** Elimina un comunicado ya enviado (autor o dirección). */
+  deleteAnnouncement(id: string) {
+    const n = this.state.notifications.find((x) => x.id === id && x.kind === "announcement");
+    if (!n || !this.canManageAnnouncement(n)) return;
+    this.commit({ notifications: this.state.notifications.filter((x) => x.id !== id) });
   }
   notificationsFor(user: User | null): Notification[] {
     if (!user) return [];
-    return this.state.notifications.filter(
-      (n) => (n.audienceRole && n.audienceRole === user.role) || n.audienceUser === user.username
-    );
+    return this.state.notifications.filter((n) => {
+      if (n.audienceUser === user.username) return true;
+      if (!n.audienceRole || n.audienceRole !== user.role) return false;
+      // Comunicado segmentado a una sala: solo a las familias de esa sala.
+      if (n.audienceSala && user.role === "family") return this.familyInSala(user, n.audienceSala);
+      return true;
+    });
+  }
+  /** ¿Alguno de los hijos/as de esta familia está en la sala indicada? */
+  private familyInSala(user: User, salaId: string): boolean {
+    return this.familySalaIds(user).includes(salaId);
   }
   unreadCountFor(user: User | null): number {
     if (!user) return 0;
@@ -606,6 +741,106 @@ class Store {
     this.commit({
       agenda: this.state.agenda.map((e) =>
         e.id === eventId ? { ...e, rsvps: { ...e.rsvps, [u.username]: value } } : e),
+    });
+  }
+
+  // --- MURAL: feed de novedades ---
+  /** Feed ordenado de más reciente a más antiguo, segmentado por sala para familias. */
+  muralFeed(): MuralPost[] {
+    const u = this.currentUser();
+    let posts = [...this.state.muralPosts];
+    if (u?.role === "family") {
+      const salaIds = this.familySalaIds(u);
+      posts = posts.filter((p) => !p.salaId || salaIds.includes(p.salaId));
+    }
+    return posts.sort((a, b) => b.ts - a.ts);
+  }
+  /** Salas de los hijos/as de una familia. */
+  private familySalaIds(user: User): string[] {
+    if (!user.guardianId) return [];
+    const studentIds = this.guardianships().filter((g) => g.guardianId === user.guardianId).map((g) => g.studentId);
+    return studentIds.map((sid) => this.state.studentSala[sid]).filter(Boolean);
+  }
+  /** Publica una novedad (docentes y dirección). */
+  addMuralPost(input: { text: string; media: MuralMedia[]; salaId?: string }) {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return; // solo el colegio publica
+    const salaName = input.salaId ? this.state.salas.find((s) => s.id === input.salaId)?.name : undefined;
+    const post: MuralPost = {
+      id: ulid("post_"), authorName: u.name, authorUser: u.username,
+      authorAvatar: u.role === "teacher" ? "🧑‍🏫" : "🏫",
+      salaId: input.salaId || undefined, salaName, text: input.text.trim(),
+      images: input.media.filter((m) => m.kind === "image").map((m) => m.url), // compat
+      media: input.media,
+      ts: Date.now(), likedBy: [], comments: [],
+    };
+    this.commit({ muralPosts: [post, ...this.state.muralPosts] });
+    this.pushNotification({
+      audienceRole: "family", kind: "announcement", audienceSala: post.salaId,
+      title: `🖼️ Nueva publicación en el Mural`,
+      body: `${u.name}${salaName ? " · " + salaName : ""}: ${post.text.slice(0, 80)}`,
+    });
+  }
+  /** Alterna el "me gusta" del usuario actual en una publicación. */
+  toggleMuralLike(postId: string) {
+    const u = this.currentUser();
+    if (!u) return;
+    this.commit({
+      muralPosts: this.state.muralPosts.map((p) => {
+        if (p.id !== postId) return p;
+        const liked = p.likedBy.includes(u.username);
+        return { ...p, likedBy: liked ? p.likedBy.filter((x) => x !== u.username) : [...p.likedBy, u.username] };
+      }),
+    });
+  }
+  /** Agrega un comentario rápido a una publicación. */
+  addMuralComment(postId: string, body: string) {
+    const u = this.currentUser();
+    if (!u || !body.trim()) return;
+    const comment = { id: ulid("cm_"), fromUser: u.username, fromName: u.name, body: body.trim(), ts: Date.now() };
+    this.commit({
+      muralPosts: this.state.muralPosts.map((p) =>
+        p.id === postId ? { ...p, comments: [...p.comments, comment] } : p),
+    });
+  }
+  /** ¿El usuario actual puede editar/borrar esta publicación? (autor o dirección) */
+  canManageMuralPost(post: MuralPost): boolean {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return false;
+    return u.role === "director" || post.authorUser === u.username;
+  }
+  /** Edita el texto, la media y la sala destino de una publicación (autor o dirección). */
+  updateMuralPost(postId: string, patch: { text: string; media: MuralMedia[]; salaId?: string }) {
+    const post = this.state.muralPosts.find((p) => p.id === postId);
+    if (!post || !this.canManageMuralPost(post)) return;
+    const salaId = patch.salaId || undefined;
+    const salaName = salaId ? this.state.salas.find((s) => s.id === salaId)?.name : undefined;
+    this.commit({
+      muralPosts: this.state.muralPosts.map((p) =>
+        p.id === postId
+          ? { ...p, text: patch.text.trim(), media: patch.media, salaId, salaName, images: patch.media.filter((m) => m.kind === "image").map((m) => m.url) }
+          : p),
+    });
+  }
+  /** Elimina una publicación (autor o dirección). */
+  deleteMuralPost(postId: string) {
+    const post = this.state.muralPosts.find((p) => p.id === postId);
+    if (!post || !this.canManageMuralPost(post)) return;
+    this.commit({ muralPosts: this.state.muralPosts.filter((p) => p.id !== postId) });
+  }
+  /** Elimina un comentario (su autor, el autor del post o dirección). */
+  deleteMuralComment(postId: string, commentId: string) {
+    const u = this.currentUser();
+    if (!u) return;
+    const post = this.state.muralPosts.find((p) => p.id === postId);
+    if (!post) return;
+    const comment = post.comments.find((c) => c.id === commentId);
+    if (!comment) return;
+    const canDelete = comment.fromUser === u.username || this.canManageMuralPost(post);
+    if (!canDelete) return;
+    this.commit({
+      muralPosts: this.state.muralPosts.map((p) =>
+        p.id === postId ? { ...p, comments: p.comments.filter((c) => c.id !== commentId) } : p),
     });
   }
 

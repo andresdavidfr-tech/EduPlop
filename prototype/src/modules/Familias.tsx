@@ -4,6 +4,7 @@ import { STUDENTS, GUARDIANSHIPS, INSTITUTION } from "../lib/seed";
 import type { AuthorizationToken } from "../lib/types";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
+import { Mural } from "./Mural";
 import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { compressImage, compressToBlob, fileToDataUrl } from "../lib/image";
@@ -11,6 +12,7 @@ import { uploadPhoto } from "../lib/storage";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 
 const VIEWS: SectionDef[] = [
+  { key: "mural", label: "Mural", icon: "🖼️" },
   { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "notif", label: "Notificaciones", icon: "🔔" },
@@ -203,6 +205,7 @@ export function Familias() {
       </section>
       </>}
 
+      {view === "mural" && <Mural />}
       {view === "notif" && <PushSettings />}
 
       {view === "agenda" && <Agenda />}
