@@ -1,9 +1,7 @@
 import { useRef, useState } from "react";
 import { store, useStore } from "../lib/store";
 import { Modal } from "../ui/Modal";
-import { compressImage, compressToBlob, fileToDataUrl } from "../lib/image";
-import { uploadPhoto } from "../lib/storage";
-import { SYNC_ENABLED } from "../lib/supabaseConfig";
+import { compressImage, fileToDataUrl } from "../lib/image";
 
 function initials(name?: string) {
   return (name ?? "")
@@ -60,16 +58,14 @@ function ProfilePhotoModal({ onClose }: { onClose: () => void }) {
     if (!f) return;
     setUploading(true); setErr(null);
     try {
+      // El avatar se guarda como imagen compacta dentro del estado (sincronizado),
+      // sin depender de un bucket de Storage: así siempre se guarda y se muestra.
       const dataUrl = await fileToDataUrl(f);
-      let url: string | undefined;
-      if (SYNC_ENABLED) {
-        const blob = await compressToBlob(dataUrl, 512, 0.85);
-        if (blob) url = (await uploadPhoto(blob, `pfp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`)) ?? undefined;
-      }
-      if (!url) url = await compressImage(dataUrl, 256, 0.78); // fallback local
-      store.setProfilePhoto(url);
+      let img = await compressImage(dataUrl, 256, 0.75);
+      if (!img || img.length < 64) img = dataUrl; // por si la compresión no aplica
+      store.setProfilePhoto(img);
     } catch {
-      setErr("No se pudo procesar la imagen. Probá con otra.");
+      setErr("No se pudo procesar la imagen. Probá con otra (JPG o PNG).");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

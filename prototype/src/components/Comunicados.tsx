@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { store, useStore } from "../lib/store";
+import { suggestComTemplates, type ComTemplate } from "../lib/comunicadoTemplates";
 
 /**
  * Compositor de comunicados + lista de enviados con editar/borrar.
@@ -25,6 +26,13 @@ export function Comunicados() {
   const [sent, setSent] = useState(false);
 
   const targetsFamilies = !isDirector || audience === "family";
+
+  // Asistente de redacción: modelos sugeridos según el motivo/título escrito.
+  const suggestions = suggestComTemplates(title, user?.role);
+  function applyTemplate(t: ComTemplate) {
+    setTitle((cur) => (cur.trim() ? cur : t.title));
+    setBody(t.body);
+  }
 
   function enviar() {
     if (!title.trim()) return;
@@ -69,10 +77,23 @@ export function Comunicados() {
             <input id="com-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Salida didáctica del jueves" />
           </div>
         </div>
+        <div className="ai-suggest">
+          <span className="muted small">✨ Asistente de redacción — {title.trim() ? "según tu motivo, te propongo:" : "¿sobre qué es? elegí un modelo y lo completás:"}</span>
+          <div className="sugg-chips">
+            {suggestions.map((t) => (
+              <button key={t.id} type="button" className="sugg-chip" onClick={() => applyTemplate(t)} title={`Usar modelo: ${t.label}`}>
+                {t.emoji} {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <label htmlFor="com-body">Mensaje</label>
-        <input id="com-body" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escribí el aviso…" />
+        <textarea id="com-body" value={body} onChange={(e) => setBody(e.target.value)} rows={7}
+          placeholder="Escribí el aviso… o elegí un modelo arriba y completá los datos entre [corchetes]." />
         <div className="row gap" style={{ marginTop: 12 }}>
           <button className="primary" onClick={enviar}>{isDirector ? "Enviar comunicado" : "Enviar aviso"}</button>
+          {body.trim() && <button className="ghost" onClick={() => setBody("")}>Limpiar</button>}
           {sent && <span className="pill active">✓ Enviado</span>}
         </div>
       </section>
@@ -133,7 +154,7 @@ function SentRow({ id, canPickAudience, salaOptions }: { id: string; canPickAudi
           <div className="grow"><label htmlFor={`ce-title-${id}`}>Título</label><input id={`ce-title-${id}`} value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         </div>
         <label htmlFor={`ce-body-${id}`}>Mensaje</label>
-        <input id={`ce-body-${id}`} value={body} onChange={(e) => setBody(e.target.value)} />
+        <textarea id={`ce-body-${id}`} value={body} onChange={(e) => setBody(e.target.value)} rows={6} />
         <div className="row gap" style={{ marginTop: 12 }}>
           <button className="primary" onClick={save}>Guardar cambios</button>
           <button className="ghost" onClick={() => setEditing(false)}>Cancelar</button>
