@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { store, useStore } from "../lib/store";
 import type { MuralPost, MuralMedia } from "../lib/types";
-import { compressImage, compressToBlob, fileToDataUrl } from "../lib/image";
+import { compressImage, compressToBlob, fileToDataUrl, blobExt } from "../lib/image";
+
+const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // límite por archivo de Supabase Storage
 import { uploadPhoto } from "../lib/storage";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 
@@ -208,16 +210,24 @@ function Composer({ onDone, post }: { onDone: () => void; post?: MuralPost }) {
     try {
       for (const f of files) {
         const isVideo = f.type.startsWith("video/");
-        const ext = isVideo ? (f.name.split(".").pop() || "mp4") : "jpg";
+        // Storage de Supabase: 50 MB por archivo. Los videos no se recomprimen
+        // (perderían calidad y compatibilidad); avisamos si son muy grandes.
+        if (isVideo && f.size > VIDEO_MAX_BYTES) {
+          setErr(`“${f.name}” pesa ${(f.size / 1048576).toFixed(0)} MB. Subí un clip más corto (máx. 50 MB) para cuidar el almacenamiento.`);
+          continue;
+        }
         let url: string | undefined;
         if (SYNC_ENABLED) {
-          // Imágenes: comprimimos a JPG. Videos: subimos el archivo tal cual.
-          const blob = isVideo ? f : await compressToBlob(await fileToDataUrl(f), 1280, 0.82);
-          if (blob) url = (await uploadPhoto(blob, `mural-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`)) ?? undefined;
+          // Imágenes: se comprimen (WebP/JPEG). Videos: tal cual (ya vienen comprimidos del dispositivo).
+          const blob = isVideo ? f : await compressToBlob(await fileToDataUrl(f), 1280, 0.8);
+          if (blob) {
+            const ext = isVideo ? (f.name.split(".").pop()?.toLowerCase() || "mp4") : blobExt(blob);
+            url = (await uploadPhoto(blob, `mural-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`)) ?? undefined;
+          }
         }
         if (!url) {
           // Fallback sin nube (o si falló la subida): data URL local.
-          url = isVideo ? await fileToDataUrl(f) : await compressImage(await fileToDataUrl(f), 900, 0.72);
+          url = isVideo ? await fileToDataUrl(f) : await compressImage(await fileToDataUrl(f), 1024, 0.72);
         }
         const item: MuralMedia = { kind: isVideo ? "video" : "image", url };
         setMedia((prev) => [...prev, item]);

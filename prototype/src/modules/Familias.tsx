@@ -7,7 +7,7 @@ import { Agenda } from "../components/Agenda";
 import { Mural } from "./Mural";
 import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
-import { compressImage, compressToBlob, fileToDataUrl } from "../lib/image";
+import { compressImage, compressToBlob, fileToDataUrl, blobExt } from "../lib/image";
 import { uploadPhoto } from "../lib/storage";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 
@@ -294,11 +294,11 @@ function AddAuthorized({ studentId, onAdded }: { studentId: string; onAdded: (g:
     setUploading(true);
     try {
       const dataUrl = await fileToDataUrl(f);
-      // Con nube: subimos una imagen de buena calidad a Storage y guardamos la URL.
+      // Con nube: subimos una imagen comprimida (WebP/JPEG) a Storage y guardamos la URL.
       if (SYNC_ENABLED) {
-        const blob = await compressToBlob(dataUrl, 512, 0.82);
+        const blob = await compressToBlob(dataUrl, 512, 0.8);
         if (blob) {
-          const url = await uploadPhoto(blob, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`);
+          const url = await uploadPhoto(blob, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${blobExt(blob)}`);
           if (url) { setPhoto(url); return; }
         }
       }
