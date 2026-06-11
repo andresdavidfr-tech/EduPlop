@@ -600,3 +600,15 @@ textarea:focus { border-color: var(--brand); outline: none; }
 .carga-tbl input, .carga-tbl select { min-height: 38px; padding: 7px 9px; font-size: 13px; }
 .carga-tbl th:last-child, .carga-tbl td:last-child { text-align: center; }
 .carga-preview .pill { margin-bottom: 3px; }
+
+/* ===== Asistente de redacción (comunicados) ===== */
+.ai-suggest { margin-top: 14px; }
+.sugg-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.sugg-chip {
+  border: 1px dashed var(--brand); background: var(--soft); color: var(--brand-d);
+  border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.sugg-chip:hover { background: #ede9fe; }
+.sugg-chip:active { transform: scale(.96); }
+@media (prefers-color-scheme: dark) { .sugg-chip:hover { background: #2b2150; } }
