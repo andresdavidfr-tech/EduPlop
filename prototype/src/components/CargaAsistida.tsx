@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { store, useStore } from "../lib/store";
 import { parseRoster, type ParsedRow } from "../lib/rosterParse";
 import { readImportFile } from "../lib/fileImport";
+import { downloadCsvTemplate, downloadXlsxTemplate } from "../lib/templates";
 
 const EXAMPLE = `Salas:
 2° B, turno tarde
@@ -86,12 +87,17 @@ export function CargaAsistida() {
         en tu dispositivo: nada se envía afuera.
       </p>
 
-      <div className="row gap wrap" style={{ marginBottom: 10 }}>
+      <div className="row gap wrap" style={{ marginBottom: 6 }}>
         <button className="ghost" onClick={() => fileRef.current?.click()} disabled={loading} aria-busy={loading}>
           {loading ? <><span className="spinner" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }} />Leyendo…</> : "📎 Subir archivo (CSV / Excel)"}
         </button>
         <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,text/csv,text/plain" hidden onChange={onFile} />
         <span className="muted small">o pegá el texto abajo</span>
+      </div>
+      <div className="row gap wrap" style={{ marginBottom: 10 }}>
+        <span className="muted small">¿No tenés el formato? Descargá una plantilla y completala:</span>
+        <button className="link" onClick={downloadXlsxTemplate}>⬇️ Plantilla Excel</button>
+        <button className="link" onClick={downloadCsvTemplate}>⬇️ Plantilla CSV</button>
       </div>
 
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} placeholder={EXAMPLE}
