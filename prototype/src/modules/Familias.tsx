@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { store, useStore } from "../lib/store";
 import { INSTITUTION } from "../lib/seed";
-import type { AuthorizationToken } from "../lib/types";
+import type { AuthorizationToken, Student } from "../lib/types";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { Mural } from "./Mural";
@@ -212,33 +212,7 @@ export function Familias() {
         <p className="muted small">Los niños/as que el colegio tiene registrados a tu nombre, con su sala y las personas autorizadas a retirarlos.</p>
         {myStudents.length === 0 && <p className="muted">El colegio todavía no registró alumnos/as a tu nombre. Si creés que es un error, escribiles por Mensajes.</p>}
         <div className="kids-grid">
-          {myStudents.map((s) => {
-            const sala = store.studentClassroom(s.id);
-            const auths = store.authorizedFor(s.id);
-            return (
-              <div key={s.id} className="kid-card">
-                <div className="kid-head">
-                  <span className="kid-emoji" aria-hidden="true">{s.emoji}</span>
-                  <div>
-                    <b>{s.name}</b>
-                    <small className="muted">Doc. {s.document}</small>
-                  </div>
-                </div>
-                <div className="kid-tags">
-                  <span className="pill active">🏫 {sala}</span>
-                </div>
-                <div className="kid-auth">
-                  <small className="muted">Autorizados a retirar:</small>
-                  <ul>
-                    {auths.map((a) => (
-                      <li key={a.id}>{a.emoji} {a.name} <span className="muted small">· {a.relation}{store.isRevoked(a.id) ? " (revocado)" : ""}</span></li>
-                    ))}
-                    {auths.length === 0 && <li className="muted small">Todavía no cargaste autorizados. Hacelo en “Autorizar retiro”.</li>}
-                  </ul>
-                </div>
-              </div>
-            );
-          })}
+          {myStudents.map((s) => <KidCard key={s.id} student={s} />)}
         </div>
       </section>
       )}
@@ -276,6 +250,48 @@ export function Familias() {
         </table>
       </section>
       </>}
+    </div>
+  );
+}
+
+function KidCard({ student }: { student: Student }) {
+  useStore();
+  const sala = store.studentClassroom(student.id);
+  const auths = store.authorizedFor(student.id);
+  const [showAdd, setShowAdd] = useState(false);
+  return (
+    <div className="kid-card">
+      <div className="kid-head">
+        <span className="kid-emoji" aria-hidden="true">{student.emoji}</span>
+        <div>
+          <b>{student.name}</b>
+          <small className="muted">Doc. {student.document}</small>
+        </div>
+      </div>
+      <div className="kid-tags">
+        <span className="pill active">🏫 {sala}</span>
+      </div>
+      <details className="kid-auth">
+        <summary>🔑 Autorizados a retirar <span className="muted">({auths.length})</span></summary>
+        <ul>
+          {auths.map((a) => {
+            const revoked = store.isRevoked(a.id);
+            return (
+              <li key={a.id}>
+                <span className={revoked ? "muted" : ""}>{a.emoji} {a.name} <span className="muted small">· {a.relation}{revoked ? " · revocado" : ""}</span></span>
+                <button className="link" onClick={() => (revoked ? store.restoreGuardian(a.id) : store.revokeGuardian(a.id))}>
+                  {revoked ? "Rehabilitar" : "Revocar"}
+                </button>
+              </li>
+            );
+          })}
+          {auths.length === 0 && <li className="muted small">Sin personas autorizadas todavía.</li>}
+        </ul>
+        <button className="link addlink" onClick={() => setShowAdd((v) => !v)}>
+          {showAdd ? "Cancelar" : "+ Agregar autorizado"}
+        </button>
+        {showAdd && <AddAuthorized studentId={student.id} onAdded={() => setShowAdd(false)} />}
+      </details>
     </div>
   );
 }

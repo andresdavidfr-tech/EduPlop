@@ -576,8 +576,16 @@ textarea:focus { border-color: var(--brand); outline: none; }
 }
 .kid-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .kid-auth { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
-.kid-auth ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
-.kid-auth li { font-size: 14px; }
+.kid-auth > summary {
+  cursor: pointer; font-size: 13px; font-weight: 700; color: var(--ink);
+  list-style: none; display: flex; align-items: center; gap: 6px;
+}
+.kid-auth > summary::-webkit-details-marker { display: none; }
+.kid-auth > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+.kid-auth[open] > summary::before { transform: rotate(90deg); }
+.kid-auth ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.kid-auth li { font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.kid-auth li .link { white-space: nowrap; }
 
 /* ===== Foto de perfil (avatar circular) ===== */
 .pfp { border-radius: 50%; object-fit: cover; border: 1px solid var(--line); display: inline-block; flex: none; background: var(--soft); }
