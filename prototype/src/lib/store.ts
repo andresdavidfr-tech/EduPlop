@@ -688,6 +688,63 @@ class Store {
     this.commit({ customTeachers: [...this.state.customTeachers, ...nuevos] });
     return nuevos.length;
   }
+  /**
+   * Importación en lote desde archivo (Dirección): crea salas, alumnos y docentes
+   * en una sola operación. Resuelve la sala de cada alumno por nombre (creándola
+   * si hace falta). Devuelve cuántos de cada tipo se crearon.
+   */
+  bulkImport(input: {
+    salas?: { name: string; turno: Turno }[];
+    students?: { name: string; document?: string; emoji?: string; salaName?: string; salaId?: string }[];
+    teachers?: { name: string }[];
+  }): { salas: number; students: number; teachers: number } {
+    if (!this.isDirector()) return { salas: 0, students: 0, teachers: 0 };
+    const key = (s: string) => s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const salaMap = new Map<string, string>();
+    for (const s of this.state.salas) salaMap.set(key(s.name), s.id);
+
+    const nuevasSalas: Sala[] = [];
+    const addSalaIfNew = (name: string, turno: Turno = "mañana"): string | "" => {
+      const n = name.trim();
+      if (!n) return "";
+      const k = key(n);
+      if (salaMap.has(k)) return salaMap.get(k)!;
+      const id = ulid("sala_");
+      nuevasSalas.push({ id, name: n, turno });
+      salaMap.set(k, id);
+      return id;
+    };
+
+    for (const s of input.salas ?? []) addSalaIfNew(s.name, s.turno);
+
+    const nuevosAlumnos: Student[] = [];
+    const salaUpdates: Record<string, string> = {};
+    for (const st of input.students ?? []) {
+      if (!st.name.trim()) continue;
+      let salaId = st.salaId || "";
+      if (!salaId && st.salaName) salaId = addSalaIfNew(st.salaName);
+      const salaName = salaId
+        ? (nuevasSalas.find((s) => s.id === salaId)?.name ?? this.salaById(salaId)?.name)
+        : undefined;
+      const stu: Student = {
+        id: ulid("stu_"), name: st.name.trim(), document: (st.document ?? "").trim(),
+        classroom: salaName ?? "Sin asignar", emoji: st.emoji?.trim() || "🧒",
+      };
+      nuevosAlumnos.push(stu);
+      if (salaId) salaUpdates[stu.id] = salaId;
+    }
+
+    const nuevosDocentes: Teacher[] = (input.teachers ?? [])
+      .map((t) => t.name.trim()).filter(Boolean).map((n) => ({ id: ulid("teacher_"), name: n }));
+
+    this.commit({
+      salas: [...this.state.salas, ...nuevasSalas],
+      customStudents: [...this.state.customStudents, ...nuevosAlumnos],
+      customTeachers: [...this.state.customTeachers, ...nuevosDocentes],
+      studentSala: { ...this.state.studentSala, ...salaUpdates },
+    });
+    return { salas: nuevasSalas.length, students: nuevosAlumnos.length, teachers: nuevosDocentes.length };
+  }
   /** Baja de un docente dado de alta por Dirección (no toca los semilla). */
   deleteTeacher(id: string) {
     if (!this.isDirector()) return;
