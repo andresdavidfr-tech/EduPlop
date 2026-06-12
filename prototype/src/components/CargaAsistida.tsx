@@ -79,7 +79,7 @@ export function CargaAsistida() {
     : null;
 
   return (
-    <section className="card span2">
+    <section className="card span2 adm adm--carga">
       <h2>🤖 Carga asistida por IA</h2>
       <p className="muted small">
         Subí un archivo (CSV, Excel o texto) o pegá una lista con salas, alumnos y docentes. El asistente reconoce

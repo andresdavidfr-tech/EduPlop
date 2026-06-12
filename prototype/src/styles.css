@@ -678,3 +678,35 @@ textarea:focus { border-color: var(--brand); outline: none; }
   .kid-auth li { flex-direction: column; align-items: flex-start; gap: 6px; }
   .font-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== Administración: secciones por color + resumen + filtros ===== */
+.adm { border-left: 4px solid var(--adm, var(--brand)); }
+.adm > h2 { color: var(--adm, var(--ink)); }
+.adm--overview { --adm: #64748b; background: linear-gradient(0deg, rgba(100,116,139,.06), rgba(100,116,139,.06)), var(--panel); }
+.adm--salas    { --adm: #3b82f6; background: linear-gradient(0deg, rgba(59,130,246,.06), rgba(59,130,246,.06)), var(--panel); }
+.adm--docentes { --adm: #10b981; background: linear-gradient(0deg, rgba(16,185,129,.07), rgba(16,185,129,.07)), var(--panel); }
+.adm--alumnos  { --adm: #f59e0b; background: linear-gradient(0deg, rgba(245,158,11,.08), rgba(245,158,11,.08)), var(--panel); }
+.adm--familias { --adm: #ec4899; background: linear-gradient(0deg, rgba(236,72,153,.06), rgba(236,72,153,.06)), var(--panel); }
+.adm--carga    { --adm: #8b5cf6; background: linear-gradient(0deg, rgba(139,92,246,.06), rgba(139,92,246,.06)), var(--panel); }
+
+.adm-overview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+.adm-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 8px;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--panel); cursor: pointer;
+  transition: transform .1s, box-shadow .15s, border-color .15s;
+}
+.adm-stat b { font-size: 1.45rem; line-height: 1; }
+.adm-stat span { font-size: 0.78rem; color: var(--muted); }
+.adm-stat:hover { box-shadow: var(--shadow-1); transform: translateY(-1px); border-color: var(--adm, var(--line)); }
+.adm-stat:active { transform: scale(.97); }
+.adm-stat.s-salas b { color: #3b82f6; }
+.adm-stat.s-doc b { color: #10b981; }
+.adm-stat.s-alu b { color: #f59e0b; }
+.adm-stat.s-fam b { color: #ec4899; }
+
+.adm-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0 8px; }
+.adm-search { flex: 1 1 220px; min-width: 0; }
+.adm-filter-sel { width: auto; flex: 0 0 auto; }
+.adm-seg { flex: 0 0 auto; }
+.adm-add { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
+@media (max-width: 520px) { .adm-overview-grid { grid-template-columns: repeat(2, 1fr); } }
