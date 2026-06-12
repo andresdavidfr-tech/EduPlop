@@ -736,3 +736,19 @@ textarea:focus { border-color: var(--brand); outline: none; }
 .aud-seq { font-weight: 800; color: var(--muted); }
 .aud-id { font-size: 0.7rem; word-break: break-all; }
 .aud-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+/* ===== Documentos (colegio ↔ familias) ===== */
+.doc-item { display: grid; gap: 8px; }
+.doc-head { display: flex; align-items: center; gap: 12px; }
+.doc-head b { display: block; line-height: 1.2; }
+.doc-head small { display: block; }
+.doc-ico {
+  width: 44px; height: 44px; flex: none; border-radius: var(--radius-md); background: var(--soft);
+  border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem;
+}
+.doc-desc { margin: 0; line-height: 1.45; }
+.doc-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.doc-resp { border-top: 1px solid var(--line); padding-top: 10px; }
+.doc-resp ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.doc-resp li { font-size: 0.9rem; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+@media (max-width: 520px) { .doc-actions .primary, .doc-actions .ghost { flex: 1 1 100%; } }

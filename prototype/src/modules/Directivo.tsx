@@ -5,6 +5,7 @@ import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { Mural } from "./Mural";
 import { Comunicados } from "../components/Comunicados";
+import { Documentos } from "../components/Documentos";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { Administracion } from "../components/Administracion";
 import { downloadReceipt } from "../lib/receipt";
@@ -13,6 +14,7 @@ const VIEWS: SectionDef[] = [
   { key: "resumen", label: "Resumen", icon: "📊" },
   { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "comunicado", label: "Comunicado", icon: "📣" },
+  { key: "documentos", label: "Documentos", icon: "📄" },
   { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "administracion", label: "Administración", icon: "🗂️" },
   { key: "mural", label: "Mural", icon: "🖼️" },
@@ -122,6 +124,7 @@ export function Directivo() {
       </>}
 
       {view === "comunicado" && <Comunicados />}
+      {view === "documentos" && <Documentos />}
 
       {view === "agenda" && <Agenda />}
       {view === "mensajes" && <Messages />}

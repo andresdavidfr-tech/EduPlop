@@ -9,6 +9,7 @@ import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { Mural } from "./Mural";
 import { Comunicados } from "../components/Comunicados";
+import { Documentos } from "../components/Documentos";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 import { downloadReceipt } from "../lib/receipt";
@@ -20,6 +21,7 @@ const VIEWS: SectionDef[] = [
   { key: "salidas", label: "Salidas de hoy", icon: "📋" },
   { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "comunicados", label: "Avisos", icon: "📣" },
+  { key: "documentos", label: "Documentos", icon: "📄" },
   { key: "mural", label: "Mural", icon: "🖼️" },
   { key: "agenda", label: "Agenda", icon: "📅" },
 ];
@@ -158,6 +160,7 @@ export function Docentes() {
       {view === "mensajes" && <Messages />}
       {view === "mural" && <Mural />}
       {view === "comunicados" && <Comunicados />}
+      {view === "documentos" && <Documentos />}
 
       {scannerOpen && (
         <Suspense fallback={<div className="scanner-overlay" role="status" aria-live="polite"><div className="scanner"><span className="spinner" aria-hidden="true" /> Abriendo cámara…</div></div>}>

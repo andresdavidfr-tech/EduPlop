@@ -5,6 +5,7 @@ import type { AuthorizationToken, Student } from "../lib/types";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { Mural } from "./Mural";
+import { Documentos } from "../components/Documentos";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { compressImage, compressToBlob, fileToDataUrl, blobExt } from "../lib/image";
 import { uploadPhoto } from "../lib/storage";
@@ -13,6 +14,7 @@ import { SYNC_ENABLED } from "../lib/supabaseConfig";
 const VIEWS: SectionDef[] = [
   { key: "retiro", label: "Autorizar retiro", icon: "🎫" },
   { key: "mensajes", label: "Mensajes", icon: "💬" },
+  { key: "documentos", label: "Documentos", icon: "📄" },
   { key: "hijos", label: "Mis Hijos", icon: "👨‍👩‍👧" },
   { key: "mural", label: "Mural", icon: "🖼️" },
   { key: "agenda", label: "Agenda", icon: "📅" },
@@ -241,6 +243,7 @@ export function Familias() {
       )}
 
       {view === "mural" && <Mural />}
+      {view === "documentos" && <Documentos />}
 
       {view === "agenda" && <Agenda />}
       {view === "mensajes" && <Messages />}

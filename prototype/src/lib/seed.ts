@@ -1,4 +1,4 @@
-import type { Student, Guardian, Guardianship, User, Sala, MuralPost, Teacher } from "./types";
+import type { Student, Guardian, Guardianship, User, Sala, MuralPost, Teacher, SchoolDoc } from "./types";
 
 export const INSTITUTION = { id: "inst_8842", name: "Colegio San Martín" };
 
@@ -84,6 +84,20 @@ export const ROLE_LABEL: Record<string, string> = {
   teacher: "Docente",
   director: "Dirección",
 };
+
+const AUTORIZACION_DEMO = "data:text/plain;charset=utf-8,AUTORIZACION%20-%20SALIDA%20DIDACTICA%0A%0AYo%2C%20____________________________%2C%20autorizo%20a%20mi%20hijo/a%20____________________%20a%20participar%20de%20la%20salida%20didactica%20al%20museo%20el%20dia%20jueves.%0A%0AFirma%3A%20____________________%20%20%20Aclaracion%3A%20____________________%20%20%20DNI%3A%20__________%0A";
+
+// Documentos de ejemplo (colegio → familias). En producción los suben docentes/dirección.
+export const SCHOOL_DOCS: SchoolDoc[] = [
+  {
+    id: "doc_001", title: "Autorización salida didáctica al museo", type: "autorizacion",
+    description: "Completar, firmar y devolver antes del miércoles.",
+    fileUrl: AUTORIZACION_DEMO, fileName: "autorizacion-salida.txt", fileType: "text/plain",
+    audience: { kind: "sala", salaId: "sala_verde" },
+    createdBy: "direccion", createdByName: "Dirección — Colegio San Martín",
+    ts: Date.now() - 2 * 86400000, dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), responses: [],
+  },
+];
 
 // Fotos de muestra para el Mural (placeholders estables de Picsum).
 const photo = (seed: string, n = 1) =>

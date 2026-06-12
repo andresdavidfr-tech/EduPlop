@@ -7,8 +7,9 @@ import type {
   Settings, AuditEventType, TokenStatus, Notification, User,
   Conversation, MessageCategory, AgendaEvent, AgendaType, RsvpValue, NotifPrefs,
   Guardian, Guardianship, Sala, Turno, MuralPost, MuralMedia, Student, Teacher,
+  SchoolDoc, DocAudience, DocResponse,
 } from "./types";
-import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, TEACHERS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, MURAL_POSTS, type DemoAccount } from "./seed";
+import { INSTITUTION, DEVICE_ID, USERS, STUDENTS, TEACHERS, GUARDIANS, GUARDIANSHIPS, SALAS, STUDENT_SALA, TEACHER_TASKS, DEMO_ACCOUNTS, MURAL_POSTS, SCHOOL_DOCS, type DemoAccount } from "./seed";
 import { SYNC_ENABLED, pullShared, pushShared } from "./sync";
 import * as auth from "./auth";
 import type { AuthSession, Profile } from "./auth";
@@ -37,6 +38,7 @@ interface State {
   customStudents: Student[]; // matrícula dada de alta por Dirección
   customTeachers: Teacher[]; // nómina dada de alta por Dirección
   profilePhotos: Record<string, string>; // username → foto de perfil (URL o dataURL)
+  documents: SchoolDoc[]; // documentos colegio ↔ familias
   // --- Administración del establecimiento (editable por Dirección) ---
   salas: Sala[];
   studentSala: Record<string, string>; // studentId → salaId
@@ -55,7 +57,7 @@ const SHARED_KEYS: (keyof State)[] = [
   "tokens", "receipts", "ledger", "incidents", "settings", "revokedGuardians",
   "consumedJtis", "notifications", "conversations", "agenda", "customGuardians",
   "customGuardianships", "salas", "studentSala", "teacherTasks", "muralPosts",
-  "customStudents", "customTeachers", "profilePhotos",
+  "customStudents", "customTeachers", "profilePhotos", "documents",
 ];
 
 function pickShared(s: State): Record<string, unknown> {
@@ -106,9 +108,11 @@ function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unkno
   const salas = unionBy(a.salas ?? [], b.salas ?? [], (s) => s.id);
   const customStudents = unionBy(a.customStudents ?? [], b.customStudents ?? [], (s) => s.id);
   const customTeachers = unionBy(a.customTeachers ?? [], b.customTeachers ?? [], (t) => t.id);
+  const documents = unionBy(a.documents ?? [], b.documents ?? [], (d) => d.id,
+    (x, y) => ({ ...y, responses: unionBy(x.responses ?? [], y.responses ?? [], (r) => r.id) }));
   return {
     tokens, receipts, ledger, incidents, notifications, conversations, agenda, muralPosts,
-    customGuardians, customGuardianships, salas, customStudents, customTeachers,
+    customGuardians, customGuardianships, salas, customStudents, customTeachers, documents,
     revokedGuardians: uniq(a.revokedGuardians, b.revokedGuardians),
     consumedJtis: uniq(a.consumedJtis, b.consumedJtis),
     settings: { ...(a.settings ?? {}), ...(b.settings ?? {}) },
@@ -195,6 +199,7 @@ function freshState(): State {
     customStudents: [],
     customTeachers: [],
     profilePhotos: {},
+    documents: SCHOOL_DOCS.map((d) => ({ ...d, responses: [...d.responses] })),
     salas: SALAS.map((s) => ({ ...s })),
     studentSala: { ...STUDENT_SALA },
     teacherTasks: { ...TEACHER_TASKS },
@@ -1051,6 +1056,81 @@ class Store {
       muralPosts: this.state.muralPosts.map((p) =>
         p.id === postId ? { ...p, comments: p.comments.filter((c) => c.id !== commentId) } : p),
     });
+  }
+
+  // --- DOCUMENTOS (colegio ↔ familias) ---
+  documentsFor(user: User | null): SchoolDoc[] {
+    if (!user) return [];
+    const all = [...this.state.documents].sort((a, b) => b.ts - a.ts);
+    if (user.role === "director") return all;
+    if (user.role === "teacher") {
+      const mySalas = this.state.salas.filter((s) => s.teacherId === user.teacherId).map((s) => s.id);
+      return all.filter((d) => d.createdBy === user.username || (d.audience.kind === "sala" && !!d.audience.salaId && mySalas.includes(d.audience.salaId)));
+    }
+    return all.filter((d) => this.docVisibleToFamily(user, d));
+  }
+  private docVisibleToFamily(user: User, d: SchoolDoc): boolean {
+    if (d.audience.kind === "all") return true;
+    if (d.audience.kind === "sala") return !!d.audience.salaId && this.familySalaIds(user).includes(d.audience.salaId);
+    if (d.audience.kind === "student") {
+      const ids = this.guardianships().filter((g) => g.guardianId === user.guardianId).map((g) => g.studentId);
+      return !!d.audience.studentId && ids.includes(d.audience.studentId);
+    }
+    return false;
+  }
+  canManageDocument(d: SchoolDoc): boolean {
+    const u = this.currentUser();
+    if (!u || u.role === "family") return false;
+    return u.role === "director" || d.createdBy === u.username;
+  }
+  /** Sube un documento para las familias (docentes y dirección). */
+  addDocument(input: { title: string; type: SchoolDoc["type"]; description?: string; fileUrl: string; fileName: string; fileType: string; audience: DocAudience; dueDate?: string }): SchoolDoc | null {
+    const u = this.currentUser();
+    if (!u || u.role === "family" || !input.title.trim() || !input.fileUrl) return null;
+    const doc: SchoolDoc = {
+      id: ulid("doc_"), title: input.title.trim(), type: input.type, description: input.description?.trim() || undefined,
+      fileUrl: input.fileUrl, fileName: input.fileName, fileType: input.fileType, audience: input.audience,
+      createdBy: u.username, createdByName: u.name, ts: Date.now(), dueDate: input.dueDate || undefined, responses: [],
+    };
+    this.commit({ documents: [doc, ...this.state.documents] });
+    let target: Partial<Notification>;
+    if (doc.audience.kind === "sala") target = { audienceRole: "family", audienceSala: doc.audience.salaId };
+    else if (doc.audience.kind === "student") {
+      const link = this.guardianships().find((g) => g.studentId === doc.audience.studentId && g.role === "primary_guardian");
+      const fam = USERS.find((x) => x.role === "family" && x.guardianId === link?.guardianId);
+      target = fam ? { audienceUser: fam.username } : { audienceRole: "family" };
+    } else target = { audienceRole: "family" };
+    this.pushNotification({
+      ...target, kind: "announcement",
+      title: `📄 Nuevo documento: ${doc.title}`,
+      body: doc.type === "autorizacion" ? "Descargalo, completá y devolvé firmado." : "Disponible para descargar.",
+    });
+    return doc;
+  }
+  /** Elimina un documento (autor o dirección). */
+  deleteDocument(id: string) {
+    const d = this.state.documents.find((x) => x.id === id);
+    if (!d || !this.canManageDocument(d)) return;
+    this.commit({ documents: this.state.documents.filter((x) => x.id !== id) });
+  }
+  /** La familia (o el colegio) sube un archivo de respuesta (firmado/completado). */
+  addDocResponse(docId: string, file: { fileUrl: string; fileName: string }) {
+    const u = this.currentUser();
+    if (!u || !file.fileUrl) return;
+    const resp: DocResponse = { id: ulid("resp_"), fileUrl: file.fileUrl, fileName: file.fileName, byUser: u.username, byName: u.name, ts: Date.now() };
+    this.commit({ documents: this.state.documents.map((d) => (d.id === docId ? { ...d, responses: [...d.responses, resp] } : d)) });
+    const doc = this.state.documents.find((d) => d.id === docId);
+    if (doc) this.pushNotification({ audienceUser: doc.createdBy, kind: "message", title: `📎 ${u.name} devolvió un documento`, body: doc.title });
+  }
+  /** Quita un archivo de respuesta (quien lo subió o dirección). */
+  deleteDocResponse(docId: string, respId: string) {
+    const u = this.currentUser();
+    if (!u) return;
+    const doc = this.state.documents.find((d) => d.id === docId);
+    const resp = doc?.responses.find((r) => r.id === respId);
+    if (!resp) return;
+    if (resp.byUser !== u.username && u.role !== "director") return;
+    this.commit({ documents: this.state.documents.map((d) => (d.id === docId ? { ...d, responses: d.responses.filter((r) => r.id !== respId) } : d)) });
   }
 
   // --- Auditoría: cadena hash append-only ---
