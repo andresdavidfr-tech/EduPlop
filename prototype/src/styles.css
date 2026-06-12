@@ -710,3 +710,29 @@ textarea:focus { border-color: var(--brand); outline: none; }
 .adm-seg { flex: 0 0 auto; }
 .adm-add { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
 @media (max-width: 520px) { .adm-overview-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ===== Auditoría (Dirección): desplegables + filas tipo tarjeta ===== */
+.aud > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px;
+  font-size: 1.0625rem; font-weight: 700; color: var(--ink);
+}
+.aud > summary::-webkit-details-marker { display: none; }
+.aud > summary > span:first-child { margin-right: auto; }
+.aud > summary::after { content: "▸"; color: var(--muted); transition: transform .15s; }
+.aud[open] > summary::after { transform: rotate(90deg); }
+.aud-count {
+  background: var(--soft); color: var(--muted); border-radius: 999px;
+  padding: 1px 10px; font-size: 0.8rem; font-weight: 700;
+}
+.aud-list { display: grid; gap: 10px; margin-top: 12px; }
+.aud-item {
+  border: 1px solid var(--line); border-radius: var(--radius-md); padding: 11px 13px;
+  background: var(--panel); display: grid; gap: 4px;
+}
+.aud-item.tampered { background: #fef2f2; border-color: #fecaca; }
+@media (prefers-color-scheme: dark) { .aud-item.tampered { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.4); } }
+.aud-item-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.aud-item-main b { font-size: 0.95rem; }
+.aud-seq { font-weight: 800; color: var(--muted); }
+.aud-id { font-size: 0.7rem; word-break: break-all; }
+.aud-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }

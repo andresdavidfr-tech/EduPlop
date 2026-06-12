@@ -130,73 +130,69 @@ export function Directivo() {
       {view === "administracion" && <Administracion />}
 
       {view === "registros" && <>
-      <section className="card span2">
-        <h2>Comprobantes de retiro</h2>
+      <details className="card span2 aud" open>
+        <summary><span>📄 Comprobantes de retiro</span><span className="aud-count">{state.receipts.length}</span></summary>
         <p className="muted small">Constancia de cada salida. Descargá el comprobante o abrí una disputa si corresponde.</p>
-        <div className="table-scroll">
-          <table className="tbl">
-            <thead><tr><th>Comprobante</th><th>Alumno</th><th>Retiró</th><th>Modo</th><th></th></tr></thead>
-            <tbody>
-              {state.receipts.length === 0 && <tr><td colSpan={5} className="muted">Sin comprobantes.</td></tr>}
-              {state.receipts.map((r) => {
-                const stu = students.find((s) => s.id === r.studentId);
-                const g = store.guardianById(r.authorizedId);
-                return (
-                  <tr key={r.receiptId}>
-                    <td className="mono">{r.receiptId}</td>
-                    <td>{stu?.emoji} {stu?.name}</td>
-                    <td>{g?.emoji} {g?.name}</td>
-                    <td><span className={`pill ${r.mode}`}>{r.mode}</span></td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <button className="link" onClick={() => downloadReceipt(r)}>Descargar</button>
-                      {" · "}
-                      <button className="link" onClick={() => store.openDispute(r.receiptId)}>Disputa</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {state.receipts.length === 0 && <p className="muted">Sin comprobantes.</p>}
+        <div className="aud-list">
+          {state.receipts.map((r) => {
+            const stu = students.find((s) => s.id === r.studentId);
+            const g = store.guardianById(r.authorizedId);
+            return (
+              <div key={r.receiptId} className="aud-item">
+                <div className="aud-item-main">
+                  <b>{stu?.emoji} {stu?.name}</b>
+                  <span className={`pill ${r.mode}`}>{r.mode}</span>
+                </div>
+                <div className="muted small">Retiró: {g?.emoji} {g?.name ?? "—"}</div>
+                <div className="mono aud-id">{r.receiptId}</div>
+                <div className="aud-actions">
+                  <button className="mini-btn" onClick={() => downloadReceipt(r)}>📄 Descargar</button>
+                  <button className="mini-btn danger" onClick={() => store.openDispute(r.receiptId)}>Abrir disputa</button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </section>
+      </details>
 
-      <section className="card span2">
-        <h2>Incidentes</h2>
+      <details className="card span2 aud" open={state.incidents.some((i) => i.status === "open")}>
+        <summary><span>⚠️ Incidentes</span><span className="aud-count">{state.incidents.length}</span></summary>
         {state.incidents.length === 0 && <p className="muted">Sin incidentes registrados.</p>}
-        {state.incidents.map((i) => (
-          <div key={i.id} className="incident">
-            <span className={`pill ${i.type}`}>{i.type}</span>{" "}
-            <span className={`pill ${i.status === "resolved" ? "active" : "warn"}`}>{i.status}</span>
-            {" "}{i.detail}
-            {i.resolution && <div className="muted small">↳ Resolución: {i.resolution}</div>}
-            {i.status === "open" && (
-              <div><button className="link" onClick={() => store.resolveIncident(i.id, "Verificado con evidencia; salida legítima")}>Resolver</button></div>
-            )}
-          </div>
-        ))}
-      </section>
-
-      <section className="card span2">
-        <h2>Libro de auditoría (cadena SHA-256)</h2>
-        <p className="muted small">Registro inmutable y encadenado de todos los eventos.</p>
-        <div className="table-scroll">
-          <table className="tbl">
-            <thead><tr><th>#</th><th>Evento</th><th>Detalle</th><th>Actor</th><th>hash</th></tr></thead>
-            <tbody>
-              {state.ledger.length === 0 && <tr><td colSpan={5} className="muted">Sin eventos.</td></tr>}
-              {[...state.ledger].reverse().map((e) => (
-                <tr key={e.seq} className={e.detail.includes("[ALTERADO]") ? "tampered" : ""}>
-                  <td>{e.seq}</td>
-                  <td><span className={`pill ${e.type}`}>{TYPE_LABEL[e.type] ?? e.type}</span></td>
-                  <td>{e.detail}</td>
-                  <td className="mono">{e.actorId}</td>
-                  <td className="mono">{shortHash(e.hash)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="aud-list">
+          {state.incidents.map((i) => (
+            <div key={i.id} className="aud-item">
+              <div className="aud-item-main">
+                <span className={`pill ${i.type}`}>{i.type}</span>
+                <span className={`pill ${i.status === "resolved" ? "active" : "warn"}`}>{i.status}</span>
+              </div>
+              <div className="small">{i.detail}</div>
+              {i.resolution && <div className="muted small">↳ Resolución: {i.resolution}</div>}
+              {i.status === "open" && (
+                <div className="aud-actions"><button className="mini-btn ok" onClick={() => store.resolveIncident(i.id, "Verificado con evidencia; salida legítima")}>Resolver</button></div>
+              )}
+            </div>
+          ))}
         </div>
-      </section>
+      </details>
+
+      <details className="card span2 aud">
+        <summary><span>📜 Libro de auditoría</span><span className="aud-count">{state.ledger.length}</span></summary>
+        <p className="muted small">Registro inmutable y encadenado (SHA-256) de todos los eventos. El más reciente primero.</p>
+        {state.ledger.length === 0 && <p className="muted">Sin eventos.</p>}
+        <div className="aud-list">
+          {[...state.ledger].reverse().map((e) => (
+            <div key={e.seq} className={e.detail.includes("[ALTERADO]") ? "aud-item tampered" : "aud-item"}>
+              <div className="aud-item-main">
+                <span className="aud-seq">#{e.seq}</span>
+                <span className={`pill ${e.type}`}>{TYPE_LABEL[e.type] ?? e.type}</span>
+              </div>
+              <div className="small">{e.detail}</div>
+              <div className="mono aud-id">{e.actorId} · {shortHash(e.hash)}</div>
+            </div>
+          ))}
+        </div>
+      </details>
       </>}
     </div>
   );
