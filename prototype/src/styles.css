@@ -206,9 +206,19 @@ button { font-size: 0.875rem; }
 .login-brand h1 { margin: 6px 0 2px; color: var(--brand-d); }
 .login-error { background: #fee2e2; color: var(--bad); padding: 9px 12px; border-radius: 9px; font-size: 0.8125rem; margin-top: 12px; font-weight: 600; }
 .login-demo { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
-.demo-chip { display: flex; justify-content: space-between; width: 100%; border: 1px solid var(--line); background: var(--soft); border-radius: 10px; padding: 9px 12px; margin-top: 8px; cursor: pointer; font-size: 0.8125rem; }
-.demo-chip b { color: var(--brand-d); }
-.demo-chip span { color: var(--muted); font-family: ui-monospace, monospace; font-size: 0.75rem; }
+.demo-chip {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; min-height: 48px; border: 1px solid var(--line); background: var(--soft);
+  border-radius: 10px; padding: 9px 12px; margin-top: 8px; cursor: pointer; font-size: 0.8125rem;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.demo-chip:hover { background: #e7ebf3; border-color: #cbd5e1; }
+.demo-chip:active { transform: scale(.98); }
+.demo-chip b { color: var(--brand-d); flex: none; }
+.demo-chip span {
+  color: var(--muted); font-family: ui-monospace, monospace; font-size: 0.75rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; text-align: right;
+}
 
 /* camera scanner */
 .scanner-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.7); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
