@@ -224,3 +224,37 @@ export interface MuralPost {
   likedBy: string[]; // usernames que dieron "me gusta"
   comments: MuralComment[];
 }
+
+// --- Documentos entre colegio y familias (boletines, autorizaciones, circulares) ---
+export type DocType = "boletin" | "autorizacion" | "circular" | "otro";
+
+export interface DocAudience {
+  kind: "all" | "sala" | "student"; // toda la escuela, una sala, o un alumno/familia
+  salaId?: string;
+  studentId?: string;
+}
+
+export interface DocResponse {
+  id: string;
+  fileUrl: string;
+  fileName: string;
+  byUser: string;
+  byName: string;
+  ts: number;
+}
+
+export interface SchoolDoc {
+  id: string;
+  title: string;
+  type: DocType;
+  description?: string;
+  fileUrl: string;
+  fileName: string;
+  fileType: string; // MIME
+  audience: DocAudience;
+  createdBy: string; // username
+  createdByName: string;
+  ts: number;
+  dueDate?: string; // YYYY-MM-DD
+  responses: DocResponse[];
+}
