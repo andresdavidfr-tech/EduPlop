@@ -11,11 +11,11 @@ import { downloadReceipt } from "../lib/receipt";
 
 const VIEWS: SectionDef[] = [
   { key: "resumen", label: "Resumen", icon: "📊" },
-  { key: "mural", label: "Mural", icon: "🖼️" },
   { key: "mensajes", label: "Mensajes", icon: "💬" },
-  { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "comunicado", label: "Comunicado", icon: "📣" },
+  { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "administracion", label: "Administración", icon: "🗂️" },
+  { key: "mural", label: "Mural", icon: "🖼️" },
   { key: "registros", label: "Auditoría", icon: "📜" },
 ];
 

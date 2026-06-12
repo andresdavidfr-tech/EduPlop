@@ -43,6 +43,8 @@ interface State {
   teacherTasks: Record<string, string>; // teacherId → tareas
   syncStatus: "off" | "connecting" | "ok" | "error"; // estado de la nube (local)
   syncDetail: string; // detalle del error de sync (local)
+  fontScale: number; // preferencia de tamaño de letra (local, por dispositivo)
+  fontFamily: string; // preferencia de tipografía (local, por dispositivo)
 }
 
 const LS_KEY = "eduplop-state-v3";
@@ -198,6 +200,8 @@ function freshState(): State {
     teacherTasks: { ...TEACHER_TASKS },
     syncStatus: SYNC_ENABLED ? "connecting" : "off",
     syncDetail: "",
+    fontScale: 1,
+    fontFamily: "system",
   };
 }
 
@@ -464,6 +468,10 @@ class Store {
     this.commit({ profilePhotos: rest });
   }
 
+  // --- PREFERENCIAS DE TIPOGRAFÍA (locales, por dispositivo) ---
+  setFontScale(v: number) { this.commit({ fontScale: Math.min(1.5, Math.max(0.85, v)) }); }
+  setFontFamily(v: string) { this.commit({ fontFamily: v }); }
+
   async logout() {
     const s = auth.loadStoredSession();
     if (s) await auth.signOut(s.access_token);
@@ -604,6 +612,21 @@ class Store {
       customGuardianships: [...this.state.customGuardianships, { guardianId: g.id, studentId: input.studentId, role: "authorized" }],
     });
     return g;
+  }
+  /** ¿Este autorizado fue cargado por la familia (y por ende se puede eliminar)? */
+  canDeleteAuthorized(guardianId: string): boolean {
+    return this.state.customGuardians.some((g) => g.id === guardianId);
+  }
+  /** Elimina un autorizado cargado por la familia para un alumno/a. */
+  deleteAuthorized(guardianId: string, studentId: string) {
+    const links = this.state.customGuardianships.filter((l) => !(l.guardianId === guardianId && l.studentId === studentId));
+    const stillUsed = links.some((l) => l.guardianId === guardianId) || GUARDIANSHIPS.some((l) => l.guardianId === guardianId);
+    const isCustom = this.state.customGuardians.some((g) => g.id === guardianId);
+    this.commit({
+      customGuardianships: links,
+      customGuardians: isCustom && !stillUsed ? this.state.customGuardians.filter((g) => g.id !== guardianId) : this.state.customGuardians,
+      revokedGuardians: stillUsed ? this.state.revokedGuardians : this.state.revokedGuardians.filter((id) => id !== guardianId),
+    });
   }
 
   /** Avisa a la familia (tutor principal) que su hijo/a fue retirado. */
