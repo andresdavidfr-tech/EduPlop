@@ -16,18 +16,18 @@ import { Modal } from "../ui/Modal";
 import type { PickupReceipt, Guardian } from "../lib/types";
 
 const VIEWS: SectionDef[] = [
-  { key: "mural", label: "Mural", icon: "🖼️" },
-  { key: "mensajes", label: "Mensajes", icon: "💬" },
-  { key: "comunicados", label: "Avisos", icon: "📣" },
-  { key: "agenda", label: "Agenda", icon: "📅" },
   { key: "puerta", label: "Puerta / Aula", icon: "🚪" },
   { key: "salidas", label: "Salidas de hoy", icon: "📋" },
+  { key: "mensajes", label: "Mensajes", icon: "💬" },
+  { key: "comunicados", label: "Avisos", icon: "📣" },
+  { key: "mural", label: "Mural", icon: "🖼️" },
+  { key: "agenda", label: "Agenda", icon: "📅" },
 ];
 
 export function Docentes() {
   const state = useStore();
   const user = store.currentUser();
-  const [view, setView] = useState("mensajes");
+  const [view, setView] = useState("puerta");
   const teacherId = user?.teacherId ?? TEACHERS[0].id;
   const teacherName = user?.name ?? TEACHERS[0].name;
 

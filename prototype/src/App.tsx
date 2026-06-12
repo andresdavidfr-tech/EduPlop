@@ -3,6 +3,8 @@ import { store, useStore } from "./lib/store";
 import { Login } from "./modules/Login";
 import { NotificationsBell } from "./components/Notifications";
 import { ProfilePhotoButton } from "./components/ProfileAvatar";
+import { SettingsButton } from "./components/SettingsPanel";
+import { applyUiPrefs } from "./lib/uiPrefs";
 import { Assistant } from "./components/Assistant";
 import { Logo } from "./components/Logo";
 import { INSTITUTION, ROLE_MODULES, ROLE_LABEL } from "./lib/seed";
@@ -25,6 +27,8 @@ const TAB_META: Record<Tab, { label: string; icon: string }> = {
 export function App() {
   const state = useStore();
   const user = store.currentUser();
+
+  useEffect(() => { applyUiPrefs(state.fontScale, state.fontFamily); }, [state.fontScale, state.fontFamily]);
 
   if (state.authStatus === "loading") {
     return <div className="route-loading" role="status" aria-live="polite"><span className="spinner" aria-hidden="true" /> Cargando sesión…</div>;
@@ -67,6 +71,7 @@ function Shell({ allowed, userName, userRole, pendingSync, syncStatus, syncDetai
 
         <div className="user-area">
           <NotificationsBell />
+          <SettingsButton />
           <ProfilePhotoButton />
           <div className="user-chip">
             <b>{userName}</b>

@@ -5,20 +5,17 @@ import type { AuthorizationToken, Student } from "../lib/types";
 import { Messages } from "../components/Messages";
 import { Agenda } from "../components/Agenda";
 import { Mural } from "./Mural";
-import { PushSettings } from "../components/PushSettings";
 import { SectionNav, type SectionDef } from "../components/SectionNav";
 import { compressImage, compressToBlob, fileToDataUrl, blobExt } from "../lib/image";
 import { uploadPhoto } from "../lib/storage";
 import { SYNC_ENABLED } from "../lib/supabaseConfig";
 
 const VIEWS: SectionDef[] = [
+  { key: "retiro", label: "Autorizar retiro", icon: "🎫" },
+  { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "hijos", label: "Mis Hijos", icon: "👨‍👩‍👧" },
   { key: "mural", label: "Mural", icon: "🖼️" },
-  { key: "mensajes", label: "Mensajes", icon: "💬" },
   { key: "agenda", label: "Agenda", icon: "📅" },
-  { key: "notif", label: "Notificaciones", icon: "🔔" },
-  { key: "retiro", label: "Autorizar retiro", icon: "🎫" },
-  { key: "historial", label: "Mis retiros", icon: "📋" },
 ];
 
 function statusLabel(s: string) {
@@ -46,7 +43,7 @@ function defaultTime() {
 export function Familias() {
   const state = useStore();
   const user = store.currentUser();
-  const [view, setView] = useState("mensajes");
+  const [view, setView] = useState("retiro");
 
   const myStudents = useMemo(() => {
     if (user?.role === "family" && user.guardianId) {
@@ -204,28 +201,9 @@ export function Familias() {
           <div className="empty">Tu pase aparecerá acá 📲</div>
         )}
       </section>
-      </>}
 
-      {view === "hijos" && (
       <section className="card span2">
-        <h2>👨‍👩‍👧 Mis Hijos</h2>
-        <p className="muted small">Los niños/as que el colegio tiene registrados a tu nombre, con su sala y las personas autorizadas a retirarlos.</p>
-        {myStudents.length === 0 && <p className="muted">El colegio todavía no registró alumnos/as a tu nombre. Si creés que es un error, escribiles por Mensajes.</p>}
-        <div className="kids-grid">
-          {myStudents.map((s) => <KidCard key={s.id} student={s} />)}
-        </div>
-      </section>
-      )}
-
-      {view === "mural" && <Mural />}
-      {view === "notif" && <PushSettings />}
-
-      {view === "agenda" && <Agenda />}
-      {view === "mensajes" && <Messages />}
-
-      {view === "historial" && <>
-      <section className="card span2">
-        <h2>Mis retiros recientes</h2>
+        <h2>📋 Mis retiros recientes</h2>
         {!SYNC_ENABLED && (
           <p className="note demo-note">🔎 <b>Demo de un dispositivo:</b> el estado se actualiza cuando el retiro se valida en <b>este mismo navegador</b>. Si el docente escanea desde otro teléfono, acá no se reflejará (haría falta un backend compartido).</p>
         )}
@@ -250,6 +228,22 @@ export function Familias() {
         </table>
       </section>
       </>}
+
+      {view === "hijos" && (
+      <section className="card span2">
+        <h2>👨‍👩‍👧 Mis Hijos</h2>
+        <p className="muted small">Los niños/as que el colegio tiene registrados a tu nombre, con su sala y las personas autorizadas a retirarlos.</p>
+        {myStudents.length === 0 && <p className="muted">El colegio todavía no registró alumnos/as a tu nombre. Si creés que es un error, escribiles por Mensajes.</p>}
+        <div className="kids-grid">
+          {myStudents.map((s) => <KidCard key={s.id} student={s} />)}
+        </div>
+      </section>
+      )}
+
+      {view === "mural" && <Mural />}
+
+      {view === "agenda" && <Agenda />}
+      {view === "mensajes" && <Messages />}
     </div>
   );
 }
@@ -279,9 +273,16 @@ function KidCard({ student }: { student: Student }) {
             return (
               <li key={a.id}>
                 <span className={revoked ? "muted" : ""}>{a.emoji} {a.name} <span className="muted small">· {a.relation}{revoked ? " · revocado" : ""}</span></span>
-                <button className="link" onClick={() => (revoked ? store.restoreGuardian(a.id) : store.revokeGuardian(a.id))}>
-                  {revoked ? "Rehabilitar" : "Revocar"}
-                </button>
+                <span className="auth-actions">
+                  <button className={revoked ? "mini-btn ok" : "mini-btn"} onClick={() => (revoked ? store.restoreGuardian(a.id) : store.revokeGuardian(a.id))}>
+                    {revoked ? "Rehabilitar" : "Revocar"}
+                  </button>
+                  {store.canDeleteAuthorized(a.id) && (
+                    <button className="mini-btn danger" onClick={() => { if (confirm(`¿Eliminar a ${a.name} de la lista de autorizados?`)) store.deleteAuthorized(a.id, student.id); }}>
+                      Eliminar
+                    </button>
+                  )}
+                </span>
               </li>
             );
           })}
