@@ -30,7 +30,7 @@ export function Login() {
         <div className="login-brand">
           <Logo size={64} />
           <h1>Edu<span className="brand-plop">Plop</span></h1>
-          <p className="muted">Hub de Experiencia Familiar<br />Colegio San Martín</p>
+          <p className="muted">Colegio San Martín</p>
         </div>
 
         <form onSubmit={submit}>
