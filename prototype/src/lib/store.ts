@@ -222,7 +222,7 @@ function hydrate(raw: string | null): State {
   if (!raw) return base;
   try {
     const saved = JSON.parse(raw) as Partial<State>;
-    return {
+    const state: State = {
       ...base,
       ...saved,
       // La llave de institución es ahora FIJA y compartida: ignoramos cualquier
@@ -236,6 +236,17 @@ function hydrate(raw: string | null): State {
       settings: { ...base.settings, ...(saved.settings ?? {}) },
       notifPrefs: { ...base.notifPrefs, ...(saved.notifPrefs ?? {}) },
     };
+    // Migración: refresca las imágenes de los posts semilla del Mural (de los
+    // placeholders viejos a las ilustraciones acordes a cada publicación).
+    const seedDocs = new Map(MURAL_POSTS.map((p) => [p.id, p]));
+    state.muralPosts = (state.muralPosts ?? []).map((p) => {
+      const seed = seedDocs.get(p.id);
+      if (seed && (p.images?.[0]?.includes("picsum.photos") ?? false)) {
+        return { ...p, images: [...seed.images], media: undefined };
+      }
+      return p;
+    });
+    return state;
   } catch {
     return base;
   }
