@@ -52,7 +52,7 @@ function Shell({ allowed, userName, userRole, pendingSync, syncStatus, syncDetai
         <div className="brand">
           <Logo size={36} />
           <div>
-            <h1>EduPlop</h1>
+            <h1>Edu<span className="brand-plop">Plop</span></h1>
             <small>{INSTITUTION.name}</small>
           </div>
         </div>
