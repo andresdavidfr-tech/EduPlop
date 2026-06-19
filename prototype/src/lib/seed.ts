@@ -99,9 +99,11 @@ export const SCHOOL_DOCS: SchoolDoc[] = [
   },
 ];
 
-// Fotos de muestra para el Mural (placeholders estables de Picsum).
-const photo = (seed: string, n = 1) =>
-  Array.from({ length: n }, (_, i) => `https://picsum.photos/seed/eduplop-${seed}-${i}/640/640`);
+// Imágenes del Mural generadas por IA según la publicación (ilustración alegre,
+// sin niños reales). Se piden a pollinations.ai con tamaño y semilla fijos.
+const aiPhoto = (prompt: string, n = 1) =>
+  Array.from({ length: n }, (_, i) =>
+    `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=640&height=640&seed=${i + 1}&nologo=true`);
 
 const HOUR = 3600000;
 
@@ -110,7 +112,7 @@ export const MURAL_POSTS: MuralPost[] = [
   {
     id: "post_001", authorName: "Seño Carla", authorAvatar: "👩‍🏫", salaId: "sala_verde", salaName: "Sala Verde",
     text: "¡Hoy plantamos en la huerta! 🌱 Cada peque cuidó su semillita. Gracias por mandar los delantales.",
-    images: photo("huerta", 5), ts: Date.now() - 2 * HOUR,
+    images: aiPhoto("cheerful colorful flat illustration of happy kindergarten children planting seedlings in a school vegetable garden, wearing aprons", 5), ts: Date.now() - 2 * HOUR,
     likedBy: ["direccion"],
     comments: [
       { id: "cm_1", fromUser: "direccion", fromName: "Dirección", body: "¡Hermosa actividad! 👏", ts: Date.now() - 1.5 * HOUR },
@@ -119,14 +121,14 @@ export const MURAL_POSTS: MuralPost[] = [
   {
     id: "post_002", authorName: "Profe Martín", authorAvatar: "🧑‍🏫", salaId: "sala_1a", salaName: "1° A",
     text: "Cierre del proyecto de animales 🦁🐘. Quedaron geniales las maquetas. ¡Aplausos para todos!",
-    images: photo("animales", 3), ts: Date.now() - 26 * HOUR,
+    images: aiPhoto("cheerful colorful flat illustration of children showing handmade animal models and dioramas in a classroom school project", 3), ts: Date.now() - 26 * HOUR,
     likedBy: [],
     comments: [],
   },
   {
     id: "post_003", authorName: "Dirección — Colegio San Martín", authorAvatar: "🏫",
     text: "📢 Reunión general de familias el próximo jueves a las 18 h en el SUM. ¡Los esperamos a todos!",
-    images: photo("reunion", 1), ts: Date.now() - 3 * 24 * HOUR,
+    images: aiPhoto("cheerful colorful flat illustration of parents and a teacher at a school parents meeting in an auditorium", 1), ts: Date.now() - 3 * 24 * HOUR,
     likedBy: ["direccion"],
     comments: [],
   },

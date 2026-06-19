@@ -151,6 +151,14 @@ function PostCard({ post, liked, onOpen }: { post: MuralPost; liked: boolean; on
   );
 }
 
+/** Si una imagen no carga (p. ej. el generador de IA), muestra una genérica. */
+function onImgError(e: React.SyntheticEvent<HTMLImageElement>) {
+  const t = e.currentTarget;
+  if (t.dataset.fb) return;
+  t.dataset.fb = "1";
+  t.src = "https://picsum.photos/seed/eduplop-mural/640/640";
+}
+
 function MediaGrid({ media, onOpen }: { media: MuralMedia[]; onOpen: (i: number) => void }) {
   const shown = media.slice(0, 4);
   const extra = media.length - shown.length;
@@ -163,7 +171,7 @@ function MediaGrid({ media, onOpen }: { media: MuralMedia[]; onOpen: (i: number)
           <button key={i} className="mural-photo" onClick={() => onOpen(i)} aria-label={`Ver ${m.kind === "video" ? "video" : "foto"} ${i + 1}`}>
             {m.kind === "video"
               ? <video src={m.url} muted playsInline preload="metadata" />
-              : <img src={m.url} alt={`Foto ${i + 1}`} loading="lazy" />}
+              : <img src={m.url} alt={`Foto ${i + 1}`} loading="lazy" onError={onImgError} />}
             {m.kind === "video" && !isLast && <span className="mural-play" aria-hidden="true">▶</span>}
             {isLast && <span className="mural-more">+{extra}</span>}
           </button>
@@ -183,7 +191,7 @@ function Lightbox({ media, i, onIndex, onClose }: { media: MuralMedia[]; i: numb
       {media.length > 1 && <button className="lb-nav lb-prev" onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Anterior">‹</button>}
       {cur.kind === "video"
         ? <video className="lb-img" src={cur.url} controls autoPlay playsInline onClick={(e) => e.stopPropagation()} />
-        : <img className="lb-img" src={cur.url} alt={`Foto ${i + 1} de ${media.length}`} onClick={(e) => e.stopPropagation()} />}
+        : <img className="lb-img" src={cur.url} alt={`Foto ${i + 1} de ${media.length}`} onError={onImgError} onClick={(e) => e.stopPropagation()} />}
       {media.length > 1 && <button className="lb-nav lb-next" onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Siguiente">›</button>}
       {media.length > 1 && <span className="lb-count">{i + 1} / {media.length}</span>}
     </div>
