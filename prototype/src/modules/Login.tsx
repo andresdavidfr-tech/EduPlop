@@ -29,7 +29,7 @@ export function Login() {
       <div className="login-card">
         <div className="login-brand">
           <Logo size={64} />
-          <h1>EduPlop</h1>
+          <h1>Edu<span className="brand-plop">Plop</span></h1>
           <p className="muted">Hub de Experiencia Familiar · Colegio San Martín</p>
         </div>
 
