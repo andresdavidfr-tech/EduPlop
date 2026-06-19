@@ -764,3 +764,7 @@ textarea:focus { border-color: var(--brand); outline: none; }
 .doc-resp ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
 .doc-resp li { font-size: 0.9rem; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 @media (max-width: 520px) { .doc-actions .primary, .doc-actions .ghost { flex: 1 1 100%; } }
+
+/* Botón "Ingresar" del login: degradé azul → violeta (izq → der) */
+.login-card .primary { background: linear-gradient(90deg, #2563eb 0%, #7c3aed 100%); border: none; }
+.login-card .primary:hover { background: linear-gradient(90deg, #1d4ed8 0%, #6d28d9 100%); box-shadow: var(--shadow-brand); }
