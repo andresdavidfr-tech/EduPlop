@@ -81,12 +81,16 @@ function uniq(a: string[] = [], b: string[] = []): string[] { return [...new Set
 
 const STATUS_RANK: Record<string, number> = { active: 0, scheduled: 0, expired: 1, revoked: 2, consumed: 3 };
 
-/** Refresca las imágenes de los posts semilla del Mural (placeholders viejos → nuevas). */
+/** Refresca las imágenes de los posts semilla del Mural (placeholders viejos → ilustraciones locales). */
 function refreshSeedMuralImages(posts: MuralPost[] = []): MuralPost[] {
   const seed = new Map(MURAL_POSTS.map((p) => [p.id, p]));
   return posts.map((p) => {
     const s = seed.get(p.id);
-    if (s && (p.images?.[0]?.includes("picsum.photos") ?? false)) return { ...p, images: [...s.images], media: undefined };
+    const img = p.images?.[0] ?? "";
+    // Reemplaza solo si todavía apunta a un generador externo (no a un /mural local ni a una subida real).
+    if (s && (img.includes("picsum.photos") || img.includes("pollinations.ai"))) {
+      return { ...p, images: [...s.images], media: undefined };
+    }
     return p;
   });
 }
