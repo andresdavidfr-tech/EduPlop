@@ -29,7 +29,7 @@ export function Logo({ size = 44 }: { size?: number }) {
       <path d="M50 49 v-3 a10 10 0 0 1 20 0 v3" fill="none" stroke="#ef2b2b" strokeWidth="5" strokeLinecap="round" />
       <rect x="42" y="47" width="36" height="37" rx="11" fill="#ef2b2b" />
       <path d="M49 59 h22" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" opacity="0.5" />
-      <path d="M51 68 a9 9 0 0 1 18 0" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.95" />
+      <path d="M51 66 a9 9 0 0 0 18 0" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.95" />
     </svg>
   );
 }
