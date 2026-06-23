@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="Niños haciendo maquetas en el jardín">
+  <rect width="320" height="320" fill="#eaf4ff"/>
+  <!-- sol -->
+  <circle cx="272" cy="54" r="24" fill="#ffd34d"/>
+  <!-- césped -->
+  <path d="M0 214 Q160 190 320 214 V320 H0 Z" fill="#9ed98a"/>
+  <path d="M0 244 Q160 224 320 244 V320 H0 Z" fill="#84cf6f" opacity="0.55"/>
+  <!-- árbol -->
+  <rect x="40" y="120" width="14" height="98" rx="6" fill="#9c6b43"/>
+  <circle cx="47" cy="108" r="33" fill="#5cb85c"/>
+  <circle cx="26" cy="124" r="21" fill="#6cc46c"/>
+  <circle cx="70" cy="124" r="21" fill="#6cc46c"/>
+  <!-- mesa -->
+  <rect x="104" y="206" width="136" height="14" rx="5" fill="#caa06b"/>
+  <rect x="116" y="220" width="10" height="42" fill="#b98b56"/>
+  <rect x="218" y="220" width="10" height="42" fill="#b98b56"/>
+  <!-- maqueta: casita -->
+  <rect x="150" y="176" width="44" height="30" fill="#fff7ec" stroke="#caa06b" stroke-width="2"/>
+  <path d="M145 176 L172 154 L199 176 Z" fill="#e85d4e"/>
+  <rect x="166" y="190" width="12" height="16" rx="1" fill="#caa06b"/>
+  <!-- maqueta: arbolito -->
+  <rect x="206" y="190" width="6" height="16" fill="#9c6b43"/>
+  <circle cx="209" cy="187" r="10" fill="#5cb85c"/>
+  <!-- niño 1 -->
+  <rect x="118" y="150" width="44" height="58" rx="20" fill="#ff8a4c"/>
+  <circle cx="140" cy="140" r="19" fill="#f6c8a0"/>
+  <path d="M121 141 a19 19 0 0 1 38 0 Z" fill="#5b3b2e"/>
+  <!-- niño 2 -->
+  <rect x="184" y="150" width="44" height="58" rx="20" fill="#3ab7ad"/>
+  <circle cx="206" cy="140" r="19" fill="#eab089"/>
+  <path d="M187 141 a19 19 0 0 1 38 0 Z" fill="#2b2b2b"/>
+  <!-- flores -->
+  <circle cx="28" cy="258" r="5" fill="#ff5d8f"/>
+  <circle cx="92" cy="278" r="5" fill="#ffd34d"/>
+  <circle cx="286" cy="262" r="5" fill="#ff5d8f"/>
+  <circle cx="250" cy="288" r="5" fill="#ffffff"/>
+</svg>

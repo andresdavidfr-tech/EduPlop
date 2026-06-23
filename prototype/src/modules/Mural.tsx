@@ -156,7 +156,7 @@ function onImgError(e: React.SyntheticEvent<HTMLImageElement>) {
   const t = e.currentTarget;
   if (t.dataset.fb) return;
   t.dataset.fb = "1";
-  t.src = "https://picsum.photos/seed/eduplop-mural/640/640";
+  t.src = "/mural/placeholder.svg";
 }
 
 function MediaGrid({ media, onOpen }: { media: MuralMedia[]; onOpen: (i: number) => void }) {
