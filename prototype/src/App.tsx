@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { store, useStore } from "./lib/store";
 import { Login } from "./modules/Login";
+import { LeadGate, useLeadGateSubmitted } from "./components/LeadGate";
 import { NotificationsBell } from "./components/Notifications";
 import { ProfilePhotoButton } from "./components/ProfileAvatar";
 import { SettingsButton } from "./components/SettingsPanel";
@@ -27,12 +28,14 @@ const TAB_META: Record<Tab, { label: string; icon: string }> = {
 export function App() {
   const state = useStore();
   const user = store.currentUser();
+  const [gateCleared, setGateCleared] = useState(() => useLeadGateSubmitted());
 
   useEffect(() => { applyUiPrefs(state.fontScale, state.fontFamily); }, [state.fontScale, state.fontFamily]);
 
   if (state.authStatus === "loading") {
     return <div className="route-loading" role="status" aria-live="polite"><span className="spinner" aria-hidden="true" /> Cargando sesión…</div>;
   }
+  if (!gateCleared) return <LeadGate onDone={() => setGateCleared(true)} />;
   if (!user) return <Login />;
 
   const allowed = (ROLE_MODULES[user.role] ?? []) as Tab[];

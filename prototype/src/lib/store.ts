@@ -81,19 +81,6 @@ function uniq(a: string[] = [], b: string[] = []): string[] { return [...new Set
 
 const STATUS_RANK: Record<string, number> = { active: 0, scheduled: 0, expired: 1, revoked: 2, consumed: 3 };
 
-/** Refresca las imágenes de los posts semilla del Mural (placeholders viejos → ilustraciones locales). */
-function refreshSeedMuralImages(posts: MuralPost[] = []): MuralPost[] {
-  const seed = new Map(MURAL_POSTS.map((p) => [p.id, p]));
-  return posts.map((p) => {
-    const s = seed.get(p.id);
-    const img = p.images?.[0] ?? "";
-    // Reemplaza solo si todavía apunta a un generador externo (no a un /mural local ni a una subida real).
-    if (s && (img.includes("picsum.photos") || img.includes("pollinations.ai"))) {
-      return { ...p, images: [...s.images], media: undefined };
-    }
-    return p;
-  });
-}
 
 /** Fusiona dos estados compartidos (uniones por id, prefiriendo lo "más avanzado"). */
 function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unknown> {
@@ -109,12 +96,12 @@ function mergeShared(a: Partial<State>, b: Partial<State>): Record<string, unkno
   const conversations = unionBy(a.conversations ?? [], b.conversations ?? [], (c) => c.id,
     (x, y) => (y.updatedAt >= x.updatedAt ? y : x));
   const agenda = unionBy(a.agenda ?? [], b.agenda ?? [], (e) => e.id);
-  const muralPosts = refreshSeedMuralImages(unionBy(a.muralPosts ?? [], b.muralPosts ?? [], (p) => p.id,
+  const muralPosts = unionBy(a.muralPosts ?? [], b.muralPosts ?? [], (p) => p.id,
     (x, y) => ({
       ...y,
       likedBy: uniq(x.likedBy, y.likedBy),
       comments: unionBy(x.comments ?? [], y.comments ?? [], (c) => c.id),
-    })));
+    }));
   const customGuardians = unionBy(a.customGuardians ?? [], b.customGuardians ?? [], (g) => g.id,
     (x, y) => (y.photo ? y : x)); // preferimos la versión que trae foto
   const customGuardianships = unionBy(a.customGuardianships ?? [], b.customGuardianships ?? [],
@@ -252,7 +239,14 @@ function hydrate(raw: string | null): State {
     };
     // Migración: refresca las imágenes de los posts semilla del Mural (de los
     // placeholders viejos a las ilustraciones acordes a cada publicación).
-    state.muralPosts = refreshSeedMuralImages(state.muralPosts);
+    const seedDocs = new Map(MURAL_POSTS.map((p) => [p.id, p]));
+    state.muralPosts = (state.muralPosts ?? []).map((p) => {
+      const seed = seedDocs.get(p.id);
+      if (seed && (p.images?.[0]?.includes("picsum.photos") ?? false)) {
+        return { ...p, images: [...seed.images], media: undefined };
+      }
+      return p;
+    });
     return state;
   } catch {
     return base;
