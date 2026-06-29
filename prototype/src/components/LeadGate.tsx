@@ -1,23 +1,40 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Logo } from "./Logo";
-import { Button } from "../ui/Button";
 
 const FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSdIi7pe13EFPFPsNjUmatgo13O8KVlbsgiSggWDWccWG0kLlg/viewform?embedded=true";
 
-const LS_KEY = "eduplop_lead_submitted";
+export const LEAD_LS_KEY = "eduplop_lead_submitted";
 
 export function useLeadGateSubmitted(): boolean {
-  try { return localStorage.getItem(LS_KEY) === "1"; } catch { return false; }
+  try { return localStorage.getItem(LEAD_LS_KEY) === "1"; } catch { return false; }
 }
 
 export function LeadGate({ onDone }: { onDone: () => void }) {
-  const [submitted, setSubmitted] = useState(false);
+  // Escucha el postMessage que envía el iframe cuando Google redirige a /?lead=1
+  useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (e.data?.type === "eduplop_lead_done") {
+        try { localStorage.setItem(LEAD_LS_KEY, "1"); } catch {}
+        onDone();
+      }
+    }
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [onDone]);
 
-  function confirm() {
-    try { localStorage.setItem(LS_KEY, "1"); } catch { /* ignore */ }
-    onDone();
-  }
+  // Polling de respaldo: detecta si el iframe ya escribió en localStorage
+  useEffect(() => {
+    const id = setInterval(() => {
+      try {
+        if (localStorage.getItem(LEAD_LS_KEY) === "1") {
+          clearInterval(id);
+          onDone();
+        }
+      } catch {}
+    }, 600);
+    return () => clearInterval(id);
+  }, [onDone]);
 
   return (
     <div className="login-wrap lead-gate-wrap">
@@ -32,40 +49,17 @@ export function LeadGate({ onDone }: { onDone: () => void }) {
 
         <p className="lead-gate-intro">
           Completá el formulario para acceder al demo gratuito.
+          El acceso se habilita automáticamente al enviarlo.
         </p>
 
-        {!submitted ? (
-          <>
-            <div className="lead-gate-iframe-wrap">
-              <iframe
-                src={FORM_URL}
-                title="Formulario de acceso al demo"
-                frameBorder="0"
-                marginHeight={0}
-                marginWidth={0}
-                className="lead-gate-iframe"
-              >
-                Cargando formulario…
-              </iframe>
-            </div>
-            <div className="lead-gate-actions">
-              <p className="lead-gate-hint">
-                Una vez que enviaste el formulario, tocá el botón:
-              </p>
-              <Button variant="primary" big onClick={() => setSubmitted(true)}>
-                Ya lo envié → Ver el demo
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="lead-gate-confirm">
-            <div className="lead-gate-check">✓</div>
-            <p>¡Gracias! Nos pondremos en contacto pronto.</p>
-            <Button variant="primary" big onClick={confirm}>
-              Ingresar al demo
-            </Button>
-          </div>
-        )}
+        <div className="lead-gate-iframe-wrap">
+          <iframe
+            src={FORM_URL}
+            title="Formulario de acceso al demo"
+            frameBorder={0}
+            className="lead-gate-iframe"
+          />
+        </div>
       </div>
     </div>
   );

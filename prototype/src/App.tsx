@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { store, useStore } from "./lib/store";
 import { Login } from "./modules/Login";
-import { LeadGate, useLeadGateSubmitted } from "./components/LeadGate";
+import { LeadGate, useLeadGateSubmitted, LEAD_LS_KEY } from "./components/LeadGate";
 import { NotificationsBell } from "./components/Notifications";
 import { ProfilePhotoButton } from "./components/ProfileAvatar";
 import { SettingsButton } from "./components/SettingsPanel";
@@ -25,12 +25,43 @@ const TAB_META: Record<Tab, { label: string; icon: string }> = {
   directivo: { label: "Dirección", icon: "🏫" },
 };
 
+// Detecta cuando Google Forms redirige al iframe con /?lead=1 tras el envío.
+// Guarda el flag en localStorage y notifica al padre con postMessage.
+function useLeadRedirect() {
+  const [isRedirect] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("lead")) {
+        localStorage.setItem(LEAD_LS_KEY, "1");
+        window.history.replaceState({}, "", window.location.pathname);
+        if (window !== window.parent) {
+          window.parent.postMessage({ type: "eduplop_lead_done" }, "*");
+          return true; // estamos dentro del iframe → mostrar pantalla de espera
+        }
+      }
+    } catch {}
+    return false;
+  });
+  return isRedirect;
+}
+
 export function App() {
+  const isRedirect = useLeadRedirect();
   const state = useStore();
   const user = store.currentUser();
   const [gateCleared, setGateCleared] = useState(() => useLeadGateSubmitted());
 
   useEffect(() => { applyUiPrefs(state.fontScale, state.fontFamily); }, [state.fontScale, state.fontFamily]);
+
+  // Pantalla transitoria que se muestra dentro del iframe luego del envío
+  if (isRedirect) {
+    return (
+      <div className="lead-redirect-screen">
+        <div className="lead-redirect-check">✓</div>
+        <p>¡Gracias! Accediendo al demo…</p>
+      </div>
+    );
+  }
 
   if (state.authStatus === "loading") {
     return <div className="route-loading" role="status" aria-live="polite"><span className="spinner" aria-hidden="true" /> Cargando sesión…</div>;

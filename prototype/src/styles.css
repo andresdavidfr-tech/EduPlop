@@ -240,13 +240,15 @@ button { font-size: 0.875rem; }
 .lead-gate-iframe { width: 100%; height: 520px; display: block; border: none; }
 .lead-gate-actions { margin-top: 16px; }
 .lead-gate-hint { margin: 0 0 10px; font-size: 0.8125rem; color: var(--muted); }
-.lead-gate-confirm { text-align: center; padding: 24px 0 8px; }
-.lead-gate-check {
-  width: 56px; height: 56px; border-radius: 50%; background: #dcfce7; color: #16a34a;
-  font-size: 1.75rem; display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 14px;
+.lead-redirect-screen {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  background: #f0fdf4; color: #15803d; font-size: 1rem;
 }
-.lead-gate-confirm p { color: var(--muted); margin: 0 0 20px; }
+.lead-redirect-check {
+  width: 64px; height: 64px; border-radius: 50%; background: #dcfce7;
+  font-size: 2rem; display: flex; align-items: center; justify-content: center;
+}
 @media (max-width: 480px) {
   .lead-gate-iframe { height: 460px; }
 }
